@@ -7,7 +7,7 @@
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
-      --planning-col-width:80px; /* réduit ~1/3 */
+      --planning-col-width:240px; /* colonnes jours ~2x la col A */
       --table-stripe:#f8fafc;--table-hover:#eef2ff;
     }
     html{min-height:100%;overflow-x:hidden;overflow-y:auto;}
@@ -15,69 +15,60 @@
     body{min-height:100%;margin:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;font-size:16px;}
     .container{width:100%;max-width:none;margin:0;padding:20px;margin-bottom:120px;box-sizing:border-box;}
     h2{margin:0 0 20px 0;color:#1976d2;font-size:22px;}
-    label{display:block;margin-top:14px;font-size:16px;color:#333;}
-    select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
+    label{display:block;margin-top:12px;font-size:15px;color:#333;}
+    select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:9px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
     textarea{min-height:120px;}
     .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
-    .muted{color:var(--muted);font-size:14px;}
-    .actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
-    button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:16px;min-height:36px;}
+    .muted{color:var(--muted);font-size:13px;}
+    .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+    button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;min-height:32px;}
     button.secondary{background:#666;}
-    .small{padding:8px 12px;font-size:15px;min-height:32px;}
+    .small{padding:8px 12px;font-size:14px;min-height:30px;}
     .hidden{display:none}
-    .error-text{color:#b91c1c;font-size:14px;margin-top:10px;display:none;}
+    .error-text{color:#b91c1c;font-size:13px;margin-top:8px;display:none;}
     .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);}
     .fixed-footer.hidden{display:none}
-    .footer-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Historique : panneau un peu plus bas et plus compact */
+    /* Historique : panneau plus bas, police réduite */
     #historyPanel{
       position:fixed;
-      left:0;
-      right:0;
-      bottom:60px;
-      max-height:calc(100vh - 140px);
+      left:0; right:0; bottom:60px;
+      max-height:calc(100vh - 150px);
       background:var(--card);
       border-radius:16px;
-      padding:18px;
+      padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:auto;
       overscroll-behavior:none;
       display:none;
       z-index:50;
-      padding-bottom:calc(24px + env(safe-area-inset-bottom));
-      font-size:12px;
+      padding-bottom:calc(22px + env(safe-area-inset-bottom));
+      font-size:11px;
       touch-action:pan-y;
     }
-    /* Planning : abaissement léger */
+    /* Planning : abaissé un peu */
     #planningPanel{
       position:fixed;left:0;right:0;bottom:80px;
-      max-height:calc(100vh - 140px);
+      max-height:calc(100vh - 150px);
       background:var(--card);
       border-radius:16px;
-      padding:18px;
+      padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:auto;
       overscroll-behavior:none;
       display:none;z-index:50;
-      padding-bottom:calc(24px + env(safe-area-inset-bottom));
-      font-size:12px;
+      padding-bottom:calc(22px + env(safe-area-inset-bottom));
+      font-size:11px;
       touch-action:pan-y;
     }
 
     .h-scrollbar{
-      position:sticky;
-      top:0;
-      z-index:5;
-      height:12px;
-      background:#f1f5f9;
-      overflow-x:auto;
-      overflow-y:hidden;
-      scrollbar-gutter:stable both-edges;
+      position:sticky;top:0;z-index:5;height:12px;background:#f1f5f9;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable both-edges;
     }
     .h-scrollbar-inner{height:1px;}
-    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:160px;}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:140px;}
     table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;padding-bottom:60px;}
     th,td{border:8px solid #eee;padding:10px;text-align:left}
     tbody tr:nth-child(odd){background:#ffffff;}
@@ -95,7 +86,7 @@
     .status-green{color:#059669;}
     .status-red{color:#b91c1c;}
 
-    /* Planning style */
+    /* Planning grid */
     .planning-container{
       position: relative;
       max-height:70vh;
@@ -109,7 +100,7 @@
       border-collapse:collapse;
       width:max-content;
       min-width:200px;
-      font-size:12px;
+      font-size:11px;
     }
     .planning-table th,
     .planning-table td{
@@ -125,22 +116,18 @@
       text-overflow:ellipsis;
       background:#fff;
     }
-    .planning-table thead th{
-      position:sticky;
-      top:0;
-      z-index:15;
-      background:#f1f5f9;
-      font-weight:800;
-      box-shadow:0 2px 6px rgba(0,0,0,0.04);
-    }
     .planning-table th.col-emp,
     .planning-table td.col-emp{
+      min-width:120px;
+      width:120px;
+      max-width:120px;
       position:sticky;
       left:0;
       z-index:18;
       background:#fff;
       box-shadow:6px 0 8px rgba(0,0,0,0.04);
     }
+    .planning-table thead th{position:sticky;top:0;z-index:15;background:#f1f5f9;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,0.04);}
     .planning-table thead th.col-emp{ z-index:19; }
     .planning-table tbody tr:nth-child(odd) td{background:var(--table-stripe,#fff);}
     .planning-table tbody tr:nth-child(even) td{background:var(--table-hover,#eef2ff);}
@@ -164,27 +151,22 @@
     }
     .today-col{background:#fff7d6 !important;}
 
-    /* Surbrillance camp/affectations */
-    select option.opt-assigned-camp {
-      background:#fff3c4;
-      color:#92400e;
-      font-weight:700;
-    }
-    select option.opt-assigned-aff {
-      background:#dbeafe;
-      color:#1d4ed8;
-      font-weight:700;
-    }
+    /* Surbrillance des campings/affaires */
+    select option.opt-assigned-camp { background:#fff3c4; color:#92400e; font-weight:700; }
+    select option.opt-assigned-aff { background:#dbeafe; color:#1d4ed8; font-weight:700; }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <div style="text-align:center;margin-bottom:20px;">
-      <img id="appLogo" alt="appLogo" style="height:140px;max-width:100%;display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+      <div style="text-align:left;">
+        <img id="appLogo" alt="appLogo" style="height:140px;max-width:100%;display:none;">
+      </div>
+      <button id="btnLogoutTop" class="secondary small" onclick="logout()" style="min-width:110px;">Déconnexion</button>
     </div>
 
-    <div id="page-form" class="card" style="padding-bottom:24px">
+    <div id="page-form" class="card" style="padding-bottom:20px">
       <h2>Pointage</h2>
       <div class="muted">
         Utilisateur connecté : <b id="userLabel"></b>
@@ -204,9 +186,9 @@
 
       <div id="form-sections" class="hidden">
         <div id="bloc-interimaire" class="hidden">
-          <div id="interimContainer" style="margin-top:14px"></div>
+          <div id="interimContainer" style="margin-top:12px"></div>
 
-          <div class="interim-actions" style="margin-top:14px;">
+          <div class="interim-actions" style="margin-top:12px;">
             <button class="small" onclick="ajouterInterimaire()">Ajouter intérimaire</button>
           </div>
         </div>
@@ -214,14 +196,14 @@
         <div id="entries-section" class="hidden">
           <div id="entriesContainer"></div>
           <div class="entry-actions">
-            <div id="loadingIndicator" style="display:none;color:var(--muted);font-size:13px;margin-right:10px;">Ajout en cours...</div>
+            <div id="loadingIndicator" style="display:none;color:var(--muted);font-size:12px;margin-right:8px;">Ajout...</div>
             <button class="small" onclick="ajouterChantier()">Ajouter un chantier</button>
             <button class="small" onclick="ajouterDeplacement()">Ajouter déplacement</button>
           </div>
           <div id="err_entries" class="error-text"></div>
         </div>
 
-        <div class="actions" style="margin-top:16px;">
+        <div class="actions" style="margin-top:12px;">
           <button id="btnValider" onclick="valider()" class="small">Valider</button>
           <span id="transferStatus" class="status-text"></span>
           <div class="msg" id="msg"></div>
@@ -230,9 +212,9 @@
     </div>
 
     <div id="mes-taches-card" class="card">
-      <h2 style="margin-bottom:12px;">Mes tâches planifiées</h2>
+      <h2 style="margin-bottom:10px;">Mes tâches planifiées</h2>
       <div class="muted" style="margin-bottom:8px;">Tâches du jour</div>
-      <div id="tachesToday" class="muted" style="margin-bottom:14px;">Chargement...</div>
+      <div id="tachesToday" class="muted" style="margin-bottom:12px;">Chargement...</div>
 
       <div class="muted" style="margin-bottom:8px;">Filtre par dates</div>
       <label>Du
@@ -241,93 +223,106 @@
       <label>Au
         <input type="date" id="uDateTo">
       </label>
-      <div class="actions" style="margin-top:14px;">
+      <div class="actions" style="margin-top:12px;">
         <button class="small" onclick="chargerMesTaches()">Actualiser</button>
       </div>
-      <div id="tachesContent" class="muted" style="margin-top:12px;">Choisissez une plage de dates puis cliquez sur Actualiser.</div>
+      <div id="tachesContent" class="muted" style="margin-top:10px;">Choisissez une plage de dates puis cliquez sur Actualiser.</div>
     </div>
   </div>
 
+  <!-- Historique -->
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="margin-top:40px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-      <strong id="historyTitle" style="font-size:18px;">Historique</strong>
-      <div>
-        <button id="btnExportPDF" onclick="telechargerPDF()" style="padding:6px 10px; font-size:13px; min-height:30px;">Exporter PDF</button>
-        <button class="secondary" onclick="fermerHistorique()" style="padding:6px 10px; font-size:13px; min-height:30px;">Fermer</button>
+    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
+      <strong id="historyTitle" style="font-size:16px;">Historique</strong>
+      <div style="display:flex;gap:6px;">
+        <button id="btnExportPDF" onclick="telechargerPDF()" class="small" style="padding:6px 8px; font-size:12px;">Exporter PDF</button>
+        <button class="secondary small" onclick="fermerHistorique()" style="padding:6px 8px; font-size:12px;">Fermer</button>
       </div>
     </div>
 
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
-      <label style="font-size:13px;">De
-        <input type="date" id="histDateFrom" style="font-size:13px;padding:8px;">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+      <label style="font-size:12px;max-width:150px;">De
+        <input type="date" id="histDateFrom" style="font-size:12px;padding:6px;">
       </label>
-      <label style="font-size:13px;">À
-        <input type="date" id="histDateTo" style="font-size:13px;padding:8px;">
+      <label style="font-size:12px;max-width:150px;">À
+        <input type="date" id="histDateTo" style="font-size:12px;padding:6px;">
       </label>
-      <label style="font-size:13px;">Salarié
-        <select id="histSalarie" style="font-size:13px;padding:8px;min-width:180px;">
-          <option value="">Tous</option>
-        </select>
-      </label>
-      <label style="font-size:13px;">Camping
-        <select id="histCamping" style="font-size:13px;padding:8px;min-width:180px;">
-          <option value="">Tous</option>
-        </select>
-      </label>
-      <button onclick="applyHistoryFilters()" class="small" style="font-size:13px;min-height:30px;">Appliquer</button>
-      <button onclick="callHistorique(true)" class="secondary small" style="font-size:13px;min-height:30px;">Actualiser</button>
+      <div style="flex:1;min-width:140px;max-width:180px;">
+        <label style="font-size:12px;">Salarié
+          <select id="histSalarie" style="font-size:12px;padding:6px;">
+            <option value="">Tous</option>
+          </select>
+        </label>
+      </div>
+      <div style="flex:1;min-width:140px;max-width:180px;">
+        <label style="font-size:12px;">Camping
+          <select id="histCamping" style="font-size:12px;padding:6px;">
+            <option value="">Tous</option>
+          </select>
+        </label>
+      </div>
+      <div style="display:flex;gap:6px;align-items:flex-end;">
+        <button onclick="applyHistoryFilters()" class="small" style="font-size:12px;min-height:28px;">Appliquer</button>
+        <button onclick="callHistorique(true)" class="secondary small" style="font-size:12px;min-height:28px;">Actualiser</button>
+      </div>
     </div>
 
-    <div id="historyContent" style="padding-top: 10px;"><div class="muted">Chargement...</div></div>
+    <div id="historyContent" style="padding-top:8px;"><div class="muted">Chargement...</div></div>
   </div>
 
+  <!-- Planning -->
   <div id="planningPanel" aria-hidden="true">
-    <div id="planningHeader" style="margin-top:40px;display:flex;justify-content:space-between;align-items:center;">
-      <strong id="planningTitle" style="font-size:18px;">Planning de l'équipe</strong>
-      <div>
-        <button class="small" onclick="actualiserPlanning()" style="padding:6px 10px; font-size:13px; min-height:30px;">Actualiser</button>
-        <button class="secondary" onclick="fermerPlanning()" style="padding:6px 10px; font-size:13px; min-height:30px;">Fermer</button>
+    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
+      <strong id="planningTitle" style="font-size:16px;">Planning de l'équipe</strong>
+      <div style="display:flex;gap:6px;">
+        <button class="small" onclick="actualiserPlanning()" style="padding:6px 8px; font-size:12px;">Actualiser</button>
+        <button class="secondary small" onclick="fermerPlanning()" style="padding:6px 8px; font-size:12px;">Fermer</button>
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
-      <label style="font-size:13px;">Du
-        <input type="date" id="planDateFrom" style="font-size:13px;padding:8px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+      <label style="font-size:12px;">Du
+        <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
-      <label style="font-size:13px;">Au
-        <input type="date" id="planDateTo" style="font-size:13px;padding:8px;">
+      <label style="font-size:12px;">Au
+        <input type="date" id="planDateTo" style="font-size:12px;padding:6px;">
       </label>
-      <label style="font-size:13px;">Salarié
-        <select id="planSalarie" style="font-size:13px;padding:8px;min-width:180px;">
+      <label style="font-size:12px;min-width:160px;">Salarié
+        <select id="planSalarie" style="font-size:12px;padding:6px;min-width:160px;">
           <option value="">Tous</option>
         </select>
       </label>
-      <button onclick="actualiserPlanning()" class="small" style="font-size:13px;min-height:30px;">Appliquer</button>
-      <button onclick="actualiserPlanning()" class="secondary small" style="font-size:13px;min-height:30px;">Actualiser</button>
-    </div>
-
-    <div id="planningContent" style="padding-top:10px;"><div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div></div>
-  </div>
-
-  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:18px;box-shadow:0 24px 90px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:13px;touch-action:pan-y;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <strong style="font-size:18px;">Mes pointages validés</strong>
-      <div>
-        <button class="small" onclick="actualiserValides()" style="padding:6px 10px; font-size:13px; min-height:30px;">Actualiser</button>
-        <button class="small" onclick="exportValidesPDF()" style="padding:6px 10px; font-size:13px; min-height:30px;">Exporter PDF</button>
-        <button class="secondary" onclick="fermerValides()" style="padding:6px 10px; font-size:13px; min-height:30px;">Fermer</button>
+      <div style="display:flex;gap:6px;align-items:flex-end;">
+        <button onclick="actualiserPlanning()" class="small" style="font-size:12px;min-height:28px;">Appliquer</button>
+        <button onclick="resetPlanningFilters()" class="secondary small" style="font-size:12px;min-height:28px;">Réinit.</button>
       </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
-      <label style="font-size:13px;">De
-        <input type="date" id="valDateFrom" style="font-size:13px;padding:8px;">
+    <div id="planningContent" style="padding-top:8px;"><div class="muted">Chargement...</div></div>
+  </div>
+
+  <!-- Pointages validés -->
+  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <strong style="font-size:16px;">Mes pointages validés</strong>
+      <div style="display:flex;gap:6px;">
+        <button class="small" onclick="actualiserValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Actualiser</button>
+        <button class="small" onclick="exportValidesPDF()" style="padding:6px 8px; font-size:12px; min-height:28px;">Exporter PDF</button>
+        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Fermer</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+      <label style="font-size:12px;">De
+        <input type="date" id="valDateFrom" style="font-size:12px;padding:6px;">
       </label>
-      <label style="font-size:13px;">À
-        <input type="date" id="valDateTo" style="font-size:13px;padding:8px;">
+      <label style="font-size:12px;">À
+        <input type="date" id="valDateTo" style="font-size:12px;padding:6px;">
       </label>
-      <button onclick="actualiserValides()" class="small" style="font-size:13px;min-height:30px;">Appliquer</button>
-      <button onclick="resetValidesFilters()" class="secondary small" style="font-size:13px;min-height:30px;">Actualiser</button>
+      <div style="display:flex;gap:6px;align-items:flex-end;">
+        <button onclick="actualiserValides()" class="small" style="font-size:12px;min-height:28px;">Appliquer</button>
+        <button onclick="resetValidesFilters()" class="secondary small" style="font-size:12px;min-height:28px;">Réinit.</button>
+      </div>
     </div>
 
     <div id="valStatus" class="muted" style="margin-bottom:8px;">Choisissez des dates puis cliquez sur Appliquer.</div>
@@ -338,36 +333,30 @@
 
   <div id="fixedFooter" class="fixed-footer hidden" aria-hidden="true">
     <div class="footer-left">
-      <button id="btnShowHistory" onclick="afficherHistorique()" class="small" style="font-size:13px;padding:8px 12px;min-height:30px;">Historique</button>
-      <button id="btnShowPlanning" onclick="afficherPlanning()" class="small" style="font-size:13px;padding:8px 12px;min-height:30px;">Planning</button>
-      <button id="btnShowValides" onclick="afficherValides()" class="small" style="font-size:13px;padding:8px 12px;min-height:30px;">Pointages validés</button>
+      <button id="btnShowHistory" onclick="afficherHistorique()" class="small" style="font-size:13px;">Historique</button>
+      <button id="btnShowPlanning" onclick="afficherPlanning()" class="small" style="font-size:13px;">Planning</button>
+      <button id="btnShowValides" onclick="afficherValides()" class="small" style="font-size:13px;">Validés</button>
     </div>
     <div class="footer-right" id="appCredit">PCELEC</div>
   </div>
 
-  <!-- templates unchanged (only inherit fonts) -->
+  <!-- Templates -->
   <template id="interimTpl">
     <div class="interim-block">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <strong class="interim-title">Intérimaire</strong>
         <button class="small" onclick="supprimerInterimaire(this)">Supprimer</button>
       </div>
-      <label>Nom <input type="text" class="it_nom"></label>
-      <div class="error-text it_err_nom" style="display:none;"></div>
+      <label>Nom <input type="text" class="it_nom"></label><div class="error-text it_err_nom"></div>
 
-      <label>Camping <select class="it_camping" onchange="majAffairesInterimaireBlock(this)"></select></label>
-      <div class="error-text it_err_camping" style="display:none;"></div>
+      <label>Camping <select class="it_camping" onchange="majAffairesInterimaireBlock(this)"></select></label><div class="error-text it_err_camping"></div>
 
-      <label>Affaire <select class="it_affaire"></select></label>
-      <div class="error-text it_err_affaire" style="display:none;"></div>
+      <label>Affaire <select class="it_affaire"></select></label><div class="error-text it_err_affaire"></div>
 
-      <label>Tâche réalisée <textarea class="it_tache"></textarea></label>
-      <div class="error-text it_err_tache" style="display:none;"></div>
+      <label>Tâche réalisée <textarea class="it_tache"></textarea></label><div class="error-text it_err_tache"></div>
 
-      <label>Heure début <input type="time" class="it_debut"></label>
-      <div class="error-text it_err_debut" style="display:none;"></div>
-      <label>Heure fin <input type="time" class="it_fin"></label>
-      <div class="error-text it_err_fin" style="display:none;"></div>
+      <label>Heure début <input type="time" class="it_debut"></label><div class="error-text it_err_debut"></div>
+      <label>Heure fin <input type="time" class="it_fin"></label><div class="error-text it_err_fin"></div>
     </div>
   </template>
 
@@ -380,29 +369,29 @@
       <label>Camping
         <select class="mc_camping" onchange="majAffairesChantier(this)"></select>
       </label>
-      <div class="error-text mc_err_camping" style="display:none;"></div>
+      <div class="error-text mc_err_camping"></div>
 
       <label>Affaire
         <select class="mc_affaire"></select>
       </label>
-      <div class="error-text mc_err_affaire" style="display:none;"></div>
+      <div class="error-text mc_err_affaire"></div>
 
       <label>Tâche réalisée
         <textarea class="mc_tache"></textarea>
       </label>
-      <div class="error-text mc_err_tache" style="display:none;"></div>
+      <div class="error-text mc_err_tache"></div>
 
       <label>Heure début
         <input type="time" class="mc_heureDebut">
       </label>
-      <div class="error-text mc_err_debut" style="display:none;"></div>
+      <div class="error-text mc_err_debut"></div>
 
       <label>Heure fin
         <input type="time" class="mc_heureFin">
       </label>
-      <div class="error-text mc_err_fin" style="display:none;"></div>
+      <div class="error-text mc_err_fin"></div>
 
-      <div style="margin-top:10px;">
+      <div style="margin-top:8px;">
         <button class="small" onclick="ajouterPause(this)">Ajouter pause</button>
       </div>
     </div>
@@ -420,12 +409,9 @@
           <option value="travail">Travail</option>
         </select>
       </label>
-      <label>Commentaire: <input class="d-comment" type="text" required></label>
-      <div class="error-text d_err_comment" style="display:none;"></div>
-      <label>Début: <input class="d-debut" type="time"></label>
-      <div class="error-text d_err_debut" style="display:none;"></div>
-      <label>Fin: <input class="d-fin" type="time"></label>
-      <div class="error-text d_err_fin" style="display:none;"></div>
+      <label>Commentaire: <input class="d-comment" type="text" required></label><div class="error-text d_err_comment"></div>
+      <label>Début: <input class="d-debut" type="time"></label><div class="error-text d_err_debut"></div>
+      <label>Fin: <input class="d-fin" type="time"></label><div class="error-text d_err_fin"></div>
     </div>
   </template>
 
@@ -491,11 +477,12 @@
       loadLogoFromCode();
       chargerMatricule();
       setDefaultTaskDates();
-      setDefaultPlanningDates();
+      setWeekPlanningDates();   // semaine courante par défaut
       setDefaultValidesDates();
-      setDefaultHistoryToday();           // pré-remplit dates
-      applyHistoryFilters();              // charge l'historique du jour
+      setDefaultHistoryToday();
+      applyHistoryFilters();    // charge l'historique du jour
       chargerTachesAujourdHui();
+      actualiserPlanning();     // charge la semaine courante
     };
 
     function loadLogoFromCode() {
@@ -522,14 +509,17 @@
       if (dt) dt.value = iso(in7);
     }
 
-    function setDefaultPlanningDates(){
+    function setWeekPlanningDates(){
       const today = new Date();
-      const in7 = new Date(); in7.setDate(today.getDate()+7);
+      const day = today.getDay(); // 0-6
+      const diffToMonday = (day === 0 ? -6 : 1 - day);
+      const monday = new Date(today); monday.setDate(today.getDate() + diffToMonday);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
       const iso = d => d.toISOString().slice(0,10);
       const df = document.getElementById('planDateFrom');
       const dt = document.getElementById('planDateTo');
-      if (df) df.value = iso(today);
-      if (dt) dt.value = iso(in7);
+      if (df) df.value = iso(monday);
+      if (dt) dt.value = iso(sunday);
     }
 
     function setDefaultValidesDates(){
@@ -622,7 +612,6 @@
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
     function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
 
-    /* ---------- MES TÂCHES : Aujourd'hui + filtré ---------- */
     function chargerTachesAujourdHui(){
       const todayIso = new Date().toISOString().slice(0,10);
       const key = (currentMatricule || currentUser || '').trim();
@@ -745,7 +734,7 @@
         const ta=(a.tache||'').toLowerCase(), tb=(b.tache||'').toLowerCase();
         return ta.localeCompare(tb,'fr',{sensitivity:'base'});
       });
-      let html = '<ul style="padding-left:18px;font-size:14px;">';
+      let html = '<ul style="padding-left:16px;font-size:13px;">';
       sorted.forEach(t=>{
         html += `<li><b>${escapeHtml(t.camping||'')}</b> / ${escapeHtml(t.affaire||'')} — ${escapeHtml(t.tache||'')} ${t.commentaire?('(' + escapeHtml(t.commentaire) + ')'):''}</li>`;
       });
@@ -782,8 +771,6 @@
       html += '</tbody></table>';
       box.innerHTML = html;
     }
-    /* ---------- fin MES TÂCHES ---------- */
-
     /* ---------- Pointages validés ---------- */
     function afficherValides(){
       const meta = document.querySelector('meta[name="viewport"]');
@@ -1081,8 +1068,8 @@
     }
 
     function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); document.getElementById('msg').textContent=''; document.getElementById('transferStatus').textContent=''; document.getElementById('transferStatus').className='status-text'; document.getElementById('btnValider').disabled = false; }
-    function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
-    function showMsg(text){ const el=document.getElementById('msg'); el.textContent = text || ''; if(!text) el.style.display='none'; else el.style.display='block'; setTimeout(()=>{ el.textContent=''; },4000); }
+    function showError(id, msg){ const el = document.getElementById('err_' + id); if(!el) return; el.textContent = msg||''; el.style.display = msg ? 'block' : 'none'; }
+    function showMsg(text){ const el = document.getElementById('msg'); el.textContent = text || ''; if(!text) el.style.display='none'; else el.style.display='block'; setTimeout(()=>{ el.textContent=''; },4000); }
 
     function setTransferStatus(text, ok){
       const el = document.getElementById('transferStatus');
@@ -1090,21 +1077,6 @@
       if (ok === true) { el.className = 'status-text status-green'; }
       else if (ok === false) { el.className = 'status-text status-red'; }
       else { el.className = 'status-text'; }
-    }
-
-    function majTypePersonne(){
-      clearAllErrors();
-      const t = document.getElementById('typePersonne').value;
-      const formSections = document.getElementById('form-sections');
-      if (t) {
-        formSections.classList.remove('hidden');
-        document.getElementById('bloc-interimaire').classList.toggle('hidden', t !== 'interimaire');
-        document.getElementById('entries-section').classList.toggle('hidden', t === 'interimaire');
-        if(t === 'interimaire' && !document.getElementById('interimContainer').children.length) ajouterInterimaire();
-      } else {
-        formSections.classList.add('hidden');
-      }
-      refreshOptionHighlights();
     }
 
     async function valider(){
@@ -1243,8 +1215,7 @@
       const payload = {
         nom: currentUser,
         typePersonne: type,
-        entries: entries,
-        matricule: currentMatricule || ''
+        entries: entries
       };
 
       try{
@@ -1302,7 +1273,7 @@
         })
         .withFailureHandler(function(err){
           cachedHistory=null;
-          if(renderNow) renderHistory([]);
+          if(renderNow) renderHistory([]); 
           showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
           setTimeout(() => showError('global', ''), 5000);
         })
@@ -1322,7 +1293,7 @@
       if(!salSelect || !campSelect) return;
       salSelect.innerHTML = '<option value="">Tous</option>';
       campSelect.innerHTML = '<option value="">Tous</option>';
-      const names = new Set(planningEmployees || []);
+      const names = new Set();
       const camps = new Set();
       for(let i=1;i<cachedHistory.length;i++){
         const row = cachedHistory[i];
@@ -1418,7 +1389,7 @@
         cells.forEach(c=>html+='<td>'+escapeHtml(fmtHHMM(c)||'')+'</td>');
         html+='</tr>';
       }
-      html+='</tbody></table><div style="height:160px;"></div></div>';
+      html+='</tbody></table><div style="height:120px;"></div></div>';
       content.innerHTML=html;
 
       const wrap = content.querySelector('.table-wrap');
@@ -1429,6 +1400,62 @@
         hsb.scrollLeft = wrap.scrollLeft;
         hsb.addEventListener('scroll', () => { wrap.scrollLeft = hsb.scrollLeft; });
         wrap.addEventListener('scroll', () => { hsb.scrollLeft = wrap.scrollLeft; });
+      }
+    }
+
+    function telechargerCSV(){} // placeholder
+
+    async function telechargerPDF(){
+      const btn=document.getElementById('btnExportPDF');
+      if(btn){btn.disabled=true;btn.textContent='Génération PDF...';}
+      try{
+        const data = filterCachedHistory();
+        if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
+
+        const header=data[0];
+        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
+        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
+        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
+
+        await ensureJsPDF();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l','pt','a4');
+
+        const df = document.getElementById('histDateFrom').value || '';
+        const dt = document.getElementById('histDateTo').value || '';
+        const sal = document.getElementById('histSalarie').value || '';
+        const camp = document.getElementById('histCamping').value || '';
+        const periodText = (df||dt)
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
+          : 'Période : toutes dates';
+        const salText = 'Salarié : ' + (sal||'Tous');
+        const campText = 'Camping : ' + (camp||'Tous');
+        const genDate = new Date();
+        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
+
+        doc.setFontSize(14);
+        doc.text('Rapport Pointages', 16, 24);
+        doc.setFontSize(11);
+        doc.text(periodText, 16, 42);
+        doc.text(salText, 16, 58);
+        doc.text(campText, 16, 74);
+        doc.text(genText, 16, 90);
+
+        doc.autoTable({
+          head: [headForPdf.map(h=>h||'')],
+          body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
+          styles:{ fontSize:8, cellPadding:4 },
+          headStyles:{ fillColor:[37,99,235], textColor:255 },
+          alternateRowStyles:{ fillColor:[240,245,255] },
+          margin:{ top:110, bottom:24, left:16, right:16 }
+        });
+
+        doc.save('historique_pointages.pdf');
+      }catch(e){
+        showError('global','Erreur PDF: ' + (e.message||e));
+        setTimeout(()=>showError('global',''),4000);
+      }finally{
+        if(btn){btn.disabled=false;btn.textContent='Exporter PDF';}
       }
     }
 
@@ -1463,7 +1490,7 @@
     function afficherPlanning(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
-      setDefaultPlanningDates();
+      setWeekPlanningDates();
       const panel=document.getElementById('planningPanel');
       panel.style.display='block';
       panel.setAttribute('aria-hidden','false');
@@ -1480,11 +1507,10 @@
       try{
         let list = [];
         if (USE_LOCAL){
-          const today = new Date().toISOString().slice(0,10);
-          list = await apiPost('/getPlanning', { startIso: df || today, endIso: dt || today });
+          list = await apiPost('/getPlanning', { startIso: df, endIso: dt });
         }else{
           list = await new Promise((resolve,reject)=>{
-            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanning(df, dt);
           });
         }
         cachedPlanning = list || [];
@@ -1496,7 +1522,7 @@
     }
 
     function resetPlanningFilters(){
-      setDefaultPlanningDates();
+      setWeekPlanningDates();
       const sel = document.getElementById('planSalarie');
       if (sel) sel.value='';
       document.getElementById('planningContent').innerHTML = '<div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div>';
@@ -1552,7 +1578,7 @@
             <thead><tr>${headerCells}</tr></thead>
             <tbody>${bodyRows}</tbody>
           </table>
-          <div style="height:160px;"></div>
+          <div style="height:120px;"></div>
         </div>
       `;
     }
@@ -1585,6 +1611,7 @@
     }
 
     window.logout = function(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'INDEX.html'; };
+
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
@@ -1601,64 +1628,8 @@
     window.actualiserPlanning = actualiserPlanning;
     window.resetPlanningFilters = resetPlanningFilters;
     window.fermerPlanning = fermerPlanning;
-    window.telechargerPDF = function(){
-      const btn=document.getElementById('btnExportPDF');
-      if(btn){btn.disabled=true;btn.textContent='Génération PDF...';}
-      try{
-        const data = filterCachedHistory();
-        if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
-
-        const header=data[0];
-        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
-        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
-        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
-
-        ensureJsPDF().then(()=>{
-          const { jsPDF } = window.jspdf;
-          const doc = new jsPDF('l','pt','a4');
-
-          const df = document.getElementById('histDateFrom').value || '';
-          const dt = document.getElementById('histDateTo').value || '';
-          const sal = document.getElementById('histSalarie').value || '';
-          const camp = document.getElementById('histCamping').value || '';
-          const periodText = (df||dt)
-            ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` 
-            : 'Période : toutes dates';
-          const salText = 'Salarié : ' + (sal||'Tous');
-          const campText = 'Camping : ' + (camp||'Tous');
-          const genDate = new Date();
-          const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
-
-          doc.setFontSize(14);
-          doc.text('Rapport Pointages', 16, 24);
-          doc.setFontSize(11);
-          doc.text(periodText, 16, 42);
-          doc.text(salText, 16, 58);
-          doc.text(campText, 16, 74);
-          doc.text(genText, 16, 90);
-
-          doc.autoTable({
-            head: [headForPdf.map(h=>h||'')],
-            body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
-            styles:{ fontSize:8, cellPadding:4 },
-            headStyles:{ fillColor:[37,99,235], textColor:255 },
-            alternateRowStyles:{ fillColor:[240,245,255] },
-            margin:{ top:110, bottom:24, left:16, right:16 }
-          });
-
-          doc.save('historique_pointages.pdf');
-        }).catch(e=>{
-          showError('global','Erreur PDF: ' + (e.message||e));
-          setTimeout(()=>showError('global',''),4000);
-        });
-      }catch(e){
-        showError('global','Erreur PDF: ' + (e.message||e));
-        setTimeout(()=>showError('global',''),4000);
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='Exporter PDF';}
-      }
-    };
-    window.telechargerCSV = function(){};
+    window.telechargerPDF = telechargerPDF;
+    window.telechargerCSV = telechargerCSV;
     window.afficherValides = afficherValides;
     window.fermerValides = fermerValides;
     window.resetValidesFilters = resetValidesFilters;
