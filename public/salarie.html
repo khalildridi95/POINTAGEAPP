@@ -7,7 +7,7 @@
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
-      --planning-col-width:240px; /* colonnes jours ~2x la col A */
+      --planning-col-width:240px; /* colonnes jours */
       --table-stripe:#f8fafc;--table-hover:#eef2ff;
     }
     html{min-height:100%;overflow-x:hidden;overflow-y:auto;}
@@ -31,10 +31,9 @@
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Historique : panneau plus bas, police réduite */
+    /* Historique */
     #historyPanel{
-      position:fixed;
-      left:0; right:0; bottom:60px;
+      position:fixed; left:0; right:0; bottom:60px;
       max-height:calc(100vh - 150px);
       background:var(--card);
       border-radius:16px;
@@ -42,15 +41,14 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:auto;
       overscroll-behavior:none;
-      display:none;
-      z-index:50;
+      display:none; z-index:50;
       padding-bottom:calc(22px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
     }
-    /* Planning : abaissé un peu */
+    /* Planning */
     #planningPanel{
-      position:fixed;left:0;right:0;bottom:80px;
+      position:fixed; left:0; right:0; bottom:80px;
       max-height:calc(100vh - 150px);
       background:var(--card);
       border-radius:16px;
@@ -58,7 +56,7 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:auto;
       overscroll-behavior:none;
-      display:none;z-index:50;
+      display:none; z-index:50;
       padding-bottom:calc(22px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
@@ -86,7 +84,7 @@
     .status-green{color:#059669;}
     .status-red{color:#b91c1c;}
 
-    /* Planning grid */
+    /* Planning table */
     .planning-container{
       position: relative;
       max-height:70vh;
@@ -151,9 +149,23 @@
     }
     .today-col{background:#fff7d6 !important;}
 
-    /* Surbrillance des campings/affaires */
+    /* Surbrillance camp/affectations */
     select option.opt-assigned-camp { background:#fff3c4; color:#92400e; font-weight:700; }
     select option.opt-assigned-aff { background:#dbeafe; color:#1d4ed8; font-weight:700; }
+
+    /* Table responsive pour "Mes tâches planifiées" */
+    .table-responsive-taches{
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      padding:4px;
+      background:#fff;
+    }
+    .table-responsive-taches table{
+      min-width:720px; /* pour voir toutes les colonnes */
+      width:auto;
+    }
   </style>
 </head>
 
@@ -226,7 +238,9 @@
       <div class="actions" style="margin-top:12px;">
         <button class="small" onclick="chargerMesTaches()">Actualiser</button>
       </div>
-      <div id="tachesContent" class="muted" style="margin-top:10px;">Choisissez une plage de dates puis cliquez sur Actualiser.</div>
+      <div id="tachesContent" class="muted" style="margin-top:10px;">
+        <div class="muted">Choisissez une plage de dates puis cliquez sur Actualiser.</div>
+      </div>
     </div>
   </div>
 
@@ -241,20 +255,20 @@
     </div>
 
     <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
-      <label style="font-size:12px;max-width:150px;">De
+      <label style="font-size:12px;max-width:140px;">De
         <input type="date" id="histDateFrom" style="font-size:12px;padding:6px;">
       </label>
-      <label style="font-size:12px;max-width:150px;">À
+      <label style="font-size:12px;max-width:140px;">À
         <input type="date" id="histDateTo" style="font-size:12px;padding:6px;">
       </label>
-      <div style="flex:1;min-width:140px;max-width:180px;">
+      <div style="flex:1;min-width:120px;max-width:150px;">
         <label style="font-size:12px;">Salarié
           <select id="histSalarie" style="font-size:12px;padding:6px;">
             <option value="">Tous</option>
           </select>
         </label>
       </div>
-      <div style="flex:1;min-width:140px;max-width:180px;">
+      <div style="flex:1;min-width:120px;max-width:150px;">
         <label style="font-size:12px;">Camping
           <select id="histCamping" style="font-size:12px;padding:6px;">
             <option value="">Tous</option>
@@ -451,7 +465,6 @@
     let planningEmployees = [];
     let cachedValides = [];
 
-    // Surbrillance sets + détection iOS
     let assignedCampings = new Set();
     let assignedAffaires = new Map();
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
@@ -477,12 +490,12 @@
       loadLogoFromCode();
       chargerMatricule();
       setDefaultTaskDates();
-      setWeekPlanningDates();   // semaine courante par défaut
+      setWeekPlanningDates();
       setDefaultValidesDates();
       setDefaultHistoryToday();
-      applyHistoryFilters();    // charge l'historique du jour
+      applyHistoryFilters();    // historique du jour
       chargerTachesAujourdHui();
-      actualiserPlanning();     // charge la semaine courante
+      actualiserPlanning();     // semaine courante
     };
 
     function loadLogoFromCode() {
@@ -511,7 +524,7 @@
 
     function setWeekPlanningDates(){
       const today = new Date();
-      const day = today.getDay(); // 0-6
+      const day = today.getDay();
       const diffToMonday = (day === 0 ? -6 : 1 - day);
       const monday = new Date(today); monday.setDate(today.getDate() + diffToMonday);
       const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
@@ -756,7 +769,7 @@
         return aa.localeCompare(ab,'fr',{sensitivity:'base'});
       });
 
-      let html = '<table><thead><tr>';
+      let html = '<div class="table-responsive-taches"><table><thead><tr>';
       html += '<th>Date</th><th>Camping</th><th>Affaire</th><th>Tâche</th><th>Commentaire</th>';
       html += '</tr></thead><tbody>';
       sorted.forEach(t => {
@@ -768,7 +781,7 @@
           <td>${escapeHtml(t.commentaire || '')}</td>
         </tr>`;
       });
-      html += '</tbody></table>';
+      html += '</tbody></table></div>';
       box.innerHTML = html;
     }
     /* ---------- Pointages validés ---------- */
