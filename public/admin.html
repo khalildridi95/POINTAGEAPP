@@ -96,31 +96,11 @@
     input:checked + .slider{background:#2563eb;}
     input:checked + .slider:before{transform:translateX(24px);}
     .today-col{background:#fff7d6 !important;}
-
-    /* Blocage visuel tant que l'auth n'est pas validée */
-    #auth-guard {
-      position: fixed;
-      inset: 0;
-      background: #f8fafc;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 3000;
-      flex-direction: column;
-      gap: 12px;
-      color: #0f172a;
-      font-family: Inter, Arial, sans-serif;
-    }
   </style>
 </head>
 
 <body>
-  <div id="auth-guard">
-    <div style="font-weight:700;font-size:18px;">Vérification de la session…</div>
-    <div class="muted" style="font-size:14px;">Merci de patienter</div>
-  </div>
-
-  <div class="grid" id="app-root" style="display:none;">
+  <div class="grid">
     <div class="card">
       <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
         <div style="text-align:center;">
@@ -277,44 +257,26 @@
   </div>
 
   <script>
+    // --- Garde d'accès frontal : si pas d'utilisateur, redirection login ---
+    (function guardAccess(){
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const fromQuery = params.get('u') || '';
+        const fromStorage = localStorage.getItem('userLogin') || '';
+        if (!fromQuery && !fromStorage) {
+          window.location.href = 'index.html';
+        }
+      } catch(e) {
+        window.location.href = 'index.html';
+      }
+    })();
+    // ----------------------------------------------------------------------
+
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
-
-    /* ---------- Auth front ---------- */
-    const LOGIN_KEY = 'userLogin';
-    function safeGetLocal(k){ try{return localStorage.getItem(k)||'';}catch(e){return'';} }
-    function safeSetLocal(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
-    function showGuard(show){
-      const g=document.getElementById('auth-guard');
-      const app=document.getElementById('app-root');
-      if(!g||!app) return;
-      if(show){ g.style.display='flex'; app.style.display='none'; }
-      else { g.style.display='none'; app.style.display='grid'; }
-    }
-    function enforceAuth(){
-      showGuard(true);
-      const params=new URLSearchParams(window.location.search);
-      const paramUser=(params.get('u')||'').trim();
-      const stored=safeGetLocal(LOGIN_KEY).trim();
-      const user=stored||paramUser;
-      if(!user){
-        window.location.replace('index.html');
-        return null;
-      }
-      if(paramUser && stored && paramUser !== stored){
-        const url=new URL(window.location.href);
-        url.searchParams.set('u', stored);
-        window.location.replace(url.toString());
-        return null;
-      }
-      if(!stored && paramUser) safeSetLocal(LOGIN_KEY, paramUser);
-      showGuard(false);
-      return stored||paramUser;
-    }
-    /* ---------- */
 
     let currentUser = '';
     let employes = [];
@@ -330,10 +292,7 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){
-      try{ localStorage.removeItem(LOGIN_KEY); }catch(e){}
-      window.location.href = 'index.html';
-    }
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -359,10 +318,9 @@
     function onClickCleanApp(btn){}
 
     async function initApp(){
-      const enforcedUser = enforceAuth();
-      if(!enforcedUser) return;
       const params = new URLSearchParams(window.location.search);
-      currentUser = enforcedUser || params.get('u') || '';
+      currentUser = params.get('u') || '';
+      if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
