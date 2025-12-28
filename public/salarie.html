@@ -7,81 +7,58 @@
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
-      --planning-col-width:180px;
+      --planning-col-width:240px;
       --table-stripe:#f8fafc;--table-hover:#eef2ff;
     }
     html{min-height:100%;overflow-x:hidden;overflow-y:auto;}
     html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#111;}
     body{min-height:100%;margin:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;font-size:18px;}
-    .container{width:100%;max-width:none;margin:0;padding:20px;margin-bottom:120px;box-sizing:border-box;}
+    .container{width:100%;max-width:none;margin:0;padding:24px;margin-bottom:160px;box-sizing:border-box;}
     h2{margin:0 0 20px 0;color:#1976d2;font-size:26px;}
-    label{display:block;margin-top:14px;font-size:18px;color:#333;}
-    select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:18px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
-    textarea{min-height:120px;}
-    .card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
+    label{display:block;margin-top:16px;font-size:18px;color:#333;}
+    select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{
+      display:block;width:100%!important;padding:12px;border:1.5px solid #e5e7eb;border-radius:10px;
+      font-size:18px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;
+    }
+    textarea{min-height:140px;}
+    .card{background:var(--card);border-radius:var(--radius);padding:22px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:22px;}
     .muted{color:var(--muted);font-size:16px;}
     .actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;}
-    /* Boutons */
-button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;font-size:16px;min-height:38px;}
-button.secondary{background:#666;}
-.small{padding:8px 12px;font-size:16px;min-height:36px;}
-    .small{padding:10px 14px;font-size:18px;min-height:40px;}
+    button{background:var(--primary);color:#fff;border:none;padding:12px 16px;border-radius:12px;font-weight:600;cursor:pointer;font-size:18px;min-height:42px;}
+    button.secondary{background:#666;}
+    .small{padding:10px 14px;font-size:16px;min-height:40px;}
     .hidden{display:none}
     .error-text{color:#b91c1c;font-size:16px;margin-top:8px;display:none;}
-    .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+    .fixed-footer{
+      position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;
+      gap:12px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));
+    }
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:12px;align-items:center;}
     .footer-right{color:var(--muted);font-size:14px;}
 
     /* Historique : panneau agrandi en bas */
     #historyPanel{
-      position:fixed;
-      left:0;
-      right:0;
-      bottom:90px;
-      max-height:calc(100vh - 120px);
-      background:var(--card);
-      border-radius:16px;
-      padding:20px;
-      box-shadow:0 36px 120px rgba(2,6,23,0.2);
-      overflow:auto;
-      overscroll-behavior:none;
-      display:none;
-      z-index:50;
-      padding-bottom:calc(24px + env(safe-area-inset-bottom));
-      font-size:14px;
-      touch-action:pan-y;
+      position:fixed;left:0;right:0;bottom:90px;max-height:calc(100vh - 120px);
+      background:var(--card);border-radius:16px;padding:20px;box-shadow:0 36px 120px rgba(2,6,23,0.2);
+      overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(24px + env(safe-area-inset-bottom));
+      font-size:14px;touch-action:pan-y;
     }
- /* Tableau planning */
-.planning-table{border-collapse:collapse;width:max-content;min-width:200px;font-size:15px;}
-.planning-table th,
-.planning-table td{
-  box-sizing:border-box;
-  padding:8px 6px;
-  text-align:left;
-  border:1px solid #eee;
-  min-width:var(--planning-col-width);
-  width:var(--planning-col-width);
-  max-width:var(--planning-col-width);
-  overflow:hidden;
-  white-space:nowrap;
-  text-overflow:ellipsis;
-  background:#fff;
-}
+    /* Planning : on garde le réglage existant */
+    #planningPanel{
+      position:fixed;left:0;right:0;bottom:110px;max-height:calc(100vh - 130px);
+      background:var(--card);border-radius:16px;padding:20px;box-shadow:0 36px 120px rgba(2,6,23,0.2);
+      overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(24px + env(safe-area-inset-bottom));
+      font-size:14px;touch-action:pan-y;
+    }
 
     .h-scrollbar{
-      position:sticky;
-      top:0;
-      z-index:5;
-      height:14px;
-      background:#f1f5f9;
-      overflow-x:auto;
-      overflow-y:hidden;
-      scrollbar-gutter:stable both-edges;
+      position:sticky;top:0;z-index:5;height:14px;background:#f1f5f9;
+      overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable both-edges;
     }
     .h-scrollbar-inner{height:1px;}
     .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:200px;}
-    table{min-width: 100%;border-collapse:collapse;font-size:16px;width:auto;padding-bottom:80px;}
+    table{min-width:100%;border-collapse:collapse;font-size:16px;width:auto;padding-bottom:80px;}
     th,td{border:10px solid #eee;padding:12px;text-align:left}
     tbody tr:nth-child(odd){background:#ffffff;}
     tbody tr:nth-child(even){background:#e0f2ff;}
@@ -179,7 +156,6 @@ button.secondary{background:#666;}
       font-weight:700;
     }
   </style>
-
 </head>
 
 <body>
@@ -752,7 +728,7 @@ button.secondary{background:#666;}
         const ta=(a.tache||'').toLowerCase(), tb=(b.tache||'').toLowerCase();
         return ta.localeCompare(tb,'fr',{sensitivity:'base'});
       });
-      let html = '<ul style="padding-left:22px;font-size:38px;">';
+      let html = '<ul style="padding-left:22px;font-size:18px;">';
       sorted.forEach(t=>{
         html += `<li><b>${escapeHtml(t.camping||'')}</b> / ${escapeHtml(t.affaire||'')} — ${escapeHtml(t.tache||'')} ${t.commentaire?('(' + escapeHtml(t.commentaire) + ')'):''}</li>`;
       });
@@ -1114,7 +1090,7 @@ button.secondary{background:#666;}
       refreshOptionHighlights();
     }
 
-    function valider(){
+    async function valider(){
       clearAllErrors();
       setTransferStatus('TRANSFERT EN COURS', true);
       document.getElementById('btnValider').disabled = true;
@@ -1129,7 +1105,7 @@ button.secondary{background:#666;}
 
         const entries = [];
         let ok = true;
-        blocks.forEach((b, idx) => {
+        blocks.forEach((b) => {
           const nom = b.querySelector('.it_nom').value.trim();
           const camping = b.querySelector('.it_camping').value;
           const affaire = b.querySelector('.it_affaire').value;
@@ -1149,7 +1125,7 @@ button.secondary{background:#666;}
         if(!ok){ setTransferStatus('', null); document.getElementById('btnValider').disabled = false; return; }
 
         let success = 0, fail = 0;
-        function sendNext(i){
+        async function sendNext(i){
           if (i >= entries.length) {
             if (fail === 0) setTransferStatus('ENREGISTRÉ', true);
             else setTransferStatus('ERREUR (' + fail + ')', false);
@@ -1174,11 +1150,17 @@ button.secondary{background:#666;}
               commentaire: en.commentaire || ''
             }]
           };
-          const onSuccess = () => { success++; sendNext(i+1); };
-          const onError = (err) => { fail++; console.error('Erreur envoi intérimaire', en.nom, err); sendNext(i+1); };
-
-          if (USE_LOCAL) apiPost('/enregistrerPointageV2', payload).then(onSuccess).catch(onError);
-          else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).enregistrerPointageV2(payload);
+          try{
+            if(USE_LOCAL){
+              await apiPost('/enregistrerPointageV2', payload); // si endpoint local existe
+            }else{
+              await new Promise((resolve,reject)=>{
+                google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).enregistrerPointageV2(payload);
+              });
+            }
+            success++;
+          }catch(err){ fail++; console.error('Erreur envoi intérimaire', en.nom, err); }
+          sendNext(i+1);
         }
         sendNext(0);
         return;
@@ -1247,24 +1229,26 @@ button.secondary{background:#666;}
         entries: entries
       };
 
-      const onSuccess = (count) => {
-        setTransferStatus('ENREGISTRÉ', true);
-        showMsg('Enregistré (' + count + ' lignes ajoutées)');
+      try{
+        if(USE_LOCAL){
+          await apiPost('/enregistrerPointageV2', payload); // si endpoint local existe
+          setTransferStatus('ENREGISTRÉ', true);
+          showMsg('Enregistré (local)');
+        }else{
+          const count = await new Promise((resolve,reject)=>{
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).enregistrerPointageV2(payload);
+          });
+          setTransferStatus('ENREGISTRÉ', true);
+          showMsg('Enregistré (' + count + ' lignes ajoutées)');
+        }
         reinitialiserFormulaire();
         document.getElementById('btnValider').disabled = false;
         setTimeout(()=>{ setTransferStatus('', null); }, 2500);
-      };
-      const onError = (err) => {
+      }catch(err){
         setTransferStatus('ERREUR', false);
         showError('global','Erreur serveur: ' + (err && err.message ? err.message : 'Erreur'));
         console.error(err);
         document.getElementById('btnValider').disabled = false;
-      };
-
-      if (USE_LOCAL) {
-        apiPost('/enregistrerPointageV2', payload).then(res=>onSuccess(res.count||entries.length)).catch(onError);
-      } else {
-        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).enregistrerPointageV2(payload);
       }
     }
 
@@ -1276,7 +1260,6 @@ button.secondary{background:#666;}
       clearAllErrors();
     }
 
-    /* ---------- Historique avec filtres (version OK) ---------- */
     function afficherHistorique(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -1288,23 +1271,23 @@ button.secondary{background:#666;}
     }
 
     function callHistorique(renderNow){
-      const onSuccess = (data) => {
-        cachedHistory=data;
-        populateHistoryFilterOptions();
-        if(renderNow) renderHistory(filterCachedHistory());
-      };
-      const onError = (err) => {
-        cachedHistory=null;
-        if(renderNow) renderHistory([]);
-        showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
-        setTimeout(() => showError('global', ''), 5000);
-      };
-
-      if (USE_LOCAL) {
-        apiGet('/getHistoriquePointages').then(onSuccess).catch(onError);
-      } else {
-        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getHistoriquePointages();
+      if (USE_LOCAL){
+        applyHistoryFilters();
+        return;
       }
+      google.script.run
+        .withSuccessHandler(function(data){
+          cachedHistory=data;
+          populateHistoryFilterOptions();
+          if(renderNow) renderHistory(filterCachedHistory());
+        })
+        .withFailureHandler(function(err){
+          cachedHistory=null;
+          if(renderNow) renderHistory([]);
+          showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
+          setTimeout(() => showError('global', ''), 5000);
+        })
+        .getHistoriquePointages();
     }
 
     function populateHistoryFilterOptions(){
@@ -1331,14 +1314,50 @@ button.secondary{background:#666;}
       Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
     }
 
-    function applyHistoryFilters(){
-      if(!cachedHistory){
-        document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
-        callHistorique(true);
+    async function applyHistoryFilters(){
+      if(USE_LOCAL){
+        try{
+          const data = await apiPost('/getHistoriquePointagesFiltered', {
+            dateFrom: document.getElementById('histDateFrom').value || '',
+            dateTo: document.getElementById('histDateTo').value || '',
+            salarie: document.getElementById('histSalarie').value || '',
+            camping: document.getElementById('histCamping').value || ''
+          });
+          cachedHistory = data || [];
+          if(cachedHistory && cachedHistory.length){
+            const header = cachedHistory[0].map(h=> (h||'').toString().toLowerCase());
+            historyHeaderIndices = {
+              date: header.findIndex(h=>h.includes('date')),
+              nom: header.findIndex(h=>h.includes('nom')),
+              camping: header.findIndex(h=>h.includes('camping'))
+            };
+          }
+          renderHistory(filterCachedHistory());
+        }catch(err){
+          cachedHistory = null;
+          renderHistory([]);
+          showError('global','Erreur chargement historique (local): '+err);
+          setTimeout(()=>showError('global',''),4000);
+        }
         return;
       }
-      const filtered = filterCachedHistory();
-      renderHistory(filtered);
+      google.script.run
+        .withSuccessHandler(function(data){
+          cachedHistory=data;
+          renderHistory(filterCachedHistory());
+        })
+        .withFailureHandler(function(err){
+          cachedHistory=null;
+          renderHistory([]);
+          showError('global','Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
+          setTimeout(() => showError('global', ''), 5000);
+        })
+        .getHistoriquePointagesFiltered(
+          document.getElementById('histDateFrom').value || '',
+          document.getElementById('histDateTo').value || '',
+          document.getElementById('histSalarie').value || '',
+          document.getElementById('histCamping').value || ''
+        );
     }
 
     function resetHistoryFilters(){
@@ -1389,14 +1408,19 @@ button.secondary{background:#666;}
     function renderHistory(data){
       const content=document.getElementById('historyContent');
       if(!data||data.length===0){ content.innerHTML='<div>Aucun historique.</div>'; return;}
+
+      const header=data[0];
+      const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
+      const visibleHeader = hasRowIdx ? header.slice(0,-1) : header;
+
       let html='<div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>';
       html+='<div class="table-wrap"><table><thead><tr>';
-      const header=data[0];
-      header.forEach(h=>html+='<th>'+escapeHtml(h||'')+'</th>');
+      visibleHeader.forEach(h=>html+='<th>'+escapeHtml(h||'')+'</th>');
       html+='</tr></thead><tbody>';
       for(let i=1;i<data.length;i++){
+        const cells = hasRowIdx ? data[i].slice(0,-1) : data[i];
         html+='<tr>';
-        data[i].forEach(c=>html+='<td>'+escapeHtml(c||'')+'</td>');
+        cells.forEach(c=>html+='<td>'+escapeHtml(c||'')+'</td>');
         html+='</tr>';
       }
       html+='</tbody></table><div style="height:340px;"></div></div>';
@@ -1413,7 +1437,7 @@ button.secondary{background:#666;}
       }
     }
 
-    function telechargerCSV(){} // supprimé
+    function telechargerCSV(){} // placeholder
 
     async function telechargerPDF(){
       const btn=document.getElementById('btnExportPDF');
@@ -1421,6 +1445,12 @@ button.secondary{background:#666;}
       try{
         const data = filterCachedHistory();
         if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
+
+        const header=data[0];
+        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
+        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
+        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
+
         await ensureJsPDF();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l','pt','a4');
@@ -1430,12 +1460,13 @@ button.secondary{background:#666;}
         const sal = document.getElementById('histSalarie').value || '';
         const camp = document.getElementById('histCamping').value || '';
         const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` 
           : 'Période : toutes dates';
         const salText = 'Salarié : ' + (sal||'Tous');
         const campText = 'Camping : ' + (camp||'Tous');
         const genDate = new Date();
-        const genText = 'Généré le : ' + fmtDateDisplay(genDate.toISOString().slice(0,10)) + ' ' + genDate.toTimeString().slice(0,5);
+        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
+
         doc.setFontSize(14);
         doc.text('Rapport Pointages', 16, 24);
         doc.setFontSize(11);
@@ -1444,16 +1475,15 @@ button.secondary{background:#666;}
         doc.text(campText, 16, 74);
         doc.text(genText, 16, 90);
 
-        const head = [data[0].map(h=>h||'')];
-        const body = data.slice(1).map(r=>r.map(c=>c||''));
         doc.autoTable({
-          head,
-          body,
+          head: [headForPdf.map(h=>h||'')],
+          body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
           styles:{ fontSize:8, cellPadding:4 },
           headStyles:{ fillColor:[37,99,235], textColor:255 },
           alternateRowStyles:{ fillColor:[240,245,255] },
           margin:{ top:110, bottom:24, left:16, right:16 }
         });
+
         doc.save('historique_pointages.pdf');
       }catch(e){
         showError('global','Erreur PDF: ' + (e.message||e));
@@ -1491,7 +1521,6 @@ button.secondary{background:#666;}
       });
     }
 
-    /* ---------- Planning général (vue tableau admin-like) ---------- */
     function afficherPlanning(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -1504,20 +1533,26 @@ button.secondary{background:#666;}
       actualiserPlanning();
     }
 
-    function actualiserPlanning(){
+    async function actualiserPlanning(){
       const df = document.getElementById('planDateFrom').value || '';
       const dt = document.getElementById('planDateTo').value || '';
       const content = document.getElementById('planningContent');
       if (content) content.innerHTML = '<div class="muted">Chargement...</div>';
-
-      const onSuccess = (list) => { cachedPlanning = list || []; renderPlanningGrid(cachedPlanning); };
-      const onError = (err) => { console.error(err); if (content) content.innerHTML = '<div class="muted">Erreur de chargement.</div>'; };
-
-      if (USE_LOCAL) {
-        const today = new Date().toISOString().slice(0,10);
-        apiPost('/getPlanning', { startIso: df || today, endIso: dt || today }).then(onSuccess).catch(onError);
-      } else {
-        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
+      try{
+        let list = [];
+        if (USE_LOCAL){
+          const today = new Date().toISOString().slice(0,10);
+          list = await apiPost('/getPlanning', { startIso: df || today, endIso: dt || today });
+        }else{
+          list = await new Promise((resolve,reject)=>{
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
+          });
+        }
+        cachedPlanning = list || [];
+        renderPlanningGrid(cachedPlanning);
+      }catch(err){
+        console.error(err);
+        if (content) content.innerHTML = '<div class="muted">Erreur de chargement.</div>';
       }
     }
 
@@ -1610,6 +1645,7 @@ button.secondary{background:#666;}
         .replace(/'/g,'&#39;');
     }
 
+    window.logout = logout;
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
