@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Admin - PCELEC (local)</title>
 
+  <!-- jsPDF & autotable -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -181,7 +182,7 @@
         </div>
       </header>
 
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px.">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
         <label>De <input type="date" id="recapFrom"></label>
         <label>À <input type="date" id="recapTo"></label>
         <label>Camping <select id="recapCamp"><option value="">Tous</option></select></label>
@@ -256,12 +257,65 @@
   </div>
 
   <script>
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
+    /* --- Sécurité front minimale --- */
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      // Pas de jeton => retour login
+      window.location.href = 'index.html';
+    }
+    const AUTH_HEADERS = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
+    async function apiGet(path){
+      const res = await fetch(API_BASE+path, { headers: { ...AUTH_HEADERS } });
+      if (res.status === 401 || res.status === 403) { localStorage.removeItem('authToken'); window.location.href = 'index.html'; return; }
+      if(!res.ok) throw new Error(res.status+" "+res.statusText);
+      return res.json();
+    }
+    async function apiPost(path, body){
+      const res = await fetch(API_BASE+path, {
+        method:"POST",
+        headers: { "Content-Type":"application/json", ...AUTH_HEADERS },
+        body: JSON.stringify(body||{})
+      });
+      if (res.status === 401 || res.status === 403) { localStorage.removeItem('authToken'); window.location.href = 'index.html'; return; }
+      if(!res.ok) throw new Error(res.status+" "+res.statusText);
+      return res.json();
+    }
+
+    // Optionnel : récupère l'utilisateur courant depuis l'API si disponible
+    async function fetchCurrentUserOrRedirect(){
+      try{
+        // Si ton backend expose /api/me (recommandé)
+        const me = await apiGet("/me");
+        if (me && me.nom) {
+          currentUser = me.nom;
+          if (me.role) currentRole = (me.role||'').toLowerCase();
+          if (currentRole && currentRole !== 'admin') {
+            alert("Accès réservé aux administrateurs.");
+            logout();
+          }
+          document.getElementById('adminUser').textContent = currentUser || '(?)';
+          return;
+        }
+      }catch(e){
+        // Si 401/403, apiGet redirige déjà
+      }
+      // fallback ancien flux (mais toujours avec token présent)
+      const params = new URLSearchParams(window.location.search);
+      currentUser = params.get('u') || localStorage.getItem('userLogin') || '';
+      if (!currentUser) { logout(); }
+      document.getElementById('adminUser').textContent = currentUser || '(?)';
+    }
+    /* --- Fin sécurité front minimale --- */
+
     let currentUser = '';
+    let currentRole = '';
     let employes = [];
     let campAff = [];
     let salariedNames = [];
@@ -275,7 +329,7 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
+    function logout(){ try{ localStorage.removeItem('userLogin'); localStorage.removeItem('authToken'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -288,31 +342,16 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
-    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
-    async function apiGet(path){ return fetchJSON(API_BASE+path); }
-    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
-
     function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
     function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
 
-    function ensureAuth(){
-      const urlUser = new URLSearchParams(window.location.search).get('u') || '';
-      let saved='';
-      try { saved = localStorage.getItem('userLogin') || ''; } catch(e){}
-      const login = urlUser || saved;
-      if (!login) { logout(); return; }
-      if (urlUser && saved && urlUser !== saved) { logout(); return; }
-      apiPost("/getRoleForLogin", { login })
-        .then(role=>{
-          if ((role||'').toLowerCase() !== 'admin') { logout(); return; }
-          currentUser = login;
-          initApp();
-        })
-        .catch(()=> logout());
-    }
+    function openArchiveModal(){}
+    function closeArchiveModal(){}
+    function onClickExportArchive(btn){}
+    function onClickCleanApp(btn){}
 
     async function initApp(){
-      document.getElementById('adminUser').textContent = currentUser || '(?)';
+      await fetchCurrentUserOrRedirect(); // sécurité : récupère l'utilisateur et vérifie le rôle
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
 
@@ -328,8 +367,7 @@
       renderPlanning(start,end);
       loadHistory();
     }
-
-    window.onload = ensureAuth;
+    window.onload = initApp;
 
     function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
     function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
@@ -348,6 +386,8 @@
     async function loadEmployees(){
       try{
         employes = await apiGet("/getEmployes");
+        // retire le mot de passe en clair si jamais renvoyé (défensif)
+        employes = (employes||[]).map(e=>({ ...e, password: undefined }));
         salariedNames = (employes||[]).filter(e => (e.role||'user').toLowerCase() === 'user').map(e => e.nom);
       }catch(e){ console.error(e); employes=[]; salariedNames=[]; }
     }
@@ -358,7 +398,7 @@
       const box = document.getElementById('empList');
       if(!box) return;
       if(!employes || employes.length===0){ box.innerHTML='<div class="muted">Aucun salarié.</div>'; return; }
-      let html = '<table><thead><tr><th>Nom</th><th>Email</th><th>Matricule</th><th>Rôle</th><th>Mot de passe</th></tr></thead><tbody>';
+      let html = '<table><thead><tr><th>Nom</th><th>Email</th><th>Matricule</th><th>Rôle</th><th>Mot de passe (saisie pour reset)</th></tr></thead><tbody>';
       employes.forEach((e,i)=>{
         html += `<tr>
           <td><input value="${escapeHtml(e.nom||'')}" oninput="employes[${i}].nom=this.value"></td>
@@ -371,7 +411,7 @@
               <option value="compta" ${((e.role||'user')==='compta')?'selected':''}>compta</option>
             </select>
           </td>
-          <td><input type="text" value="${escapeHtml(e.password||'')}" oninput="employes[${i}].password=this.value"></td>
+          <td><input type="text" value="" placeholder="Nouveau mot de passe (optionnel)" oninput="employes[${i}].password=this.value"></td>
         </tr>`;
       });
       html += '</tbody></table>';
