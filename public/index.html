@@ -60,9 +60,9 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-   const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? "http://localhost:3000/api"
-    : "https://pointage-oeax.onrender.com/api";
+    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+      ? "http://localhost:3000/api"
+      : "https://pointage-oeax.onrender.com/api";
 
     let loadTimer=null, loadProgress=0;
 
@@ -136,7 +136,10 @@
             headers:{"Content-Type":"application/json"},
             body: JSON.stringify({ login })
           }).then(role=>{
-            try{ localStorage.setItem('userLogin', login); }catch(e){}
+            try{
+              localStorage.setItem('userLogin', login);
+              localStorage.setItem('userRole', role || '');
+            }catch(e){}
             stopLoading(true);
             if(role==='admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
             else if(role==='compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
