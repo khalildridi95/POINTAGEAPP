@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Validation paye</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root{
+      --primary:#2563eb;--primary-light:#e2e8ff;--muted:#64748b;--bg:#f5f6fb;--card:#fff;--radius:14px;
+      --border:#e2e8f0;--shadow:0 12px 30px rgba(0,0,0,0.08);--table-stripe:#f8fafc;--table-hover:#eef2ff;
+      --scrollbar-size:12px;--success:#16a34a;--warn:#f97316;--danger:#dc2626;
+    }
+    /* Empêche la double barre : le scroll est uniquement sur #app-root */
+    html, body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: Inter, Arial, sans-serif;
+      background: var(--bg); color: #0f172a;
+    }
+    #app-root {
+      width: 100%; height: 100%;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .card{background:var(--card);border-radius:var(--radius);padding:0;box-shadow:var(--shadow);border:1px solid #e2e8f0;overflow:hidden;}
+    .card-body{padding:20px;}
+    h2{margin:0 0 12px;}
+    .flex{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+    label{font-weight:600;font-size:14px;}
+    input,select,textarea{padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;vertical-align:top;}
+    th{background:#f8fafc;}
+    button{padding:8px 12px;border:none;border-radius:8px;font-weight:700;color:#fff;cursor:pointer;}
+    .btn-primary{background:#2563eb;}
+    .btn-secondary{background:#475569;}
+    .btn-gray{background:#6b7280;}
+    .btn-icon{padding:6px 9px;font-size:13px;}
+    .muted{color:#64748b;}
+    .pill{display:inline-block;padding:2px 8px;border-radius:12px;background:#e2e8ff;color:#1d4ed8;font-weight:700;}
+    .inline-form{margin-top:12px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;}
+    .table-wrap{overflow:auto;max-height:70vh;}
+    .small-muted{color:#64748b;font-size:12px;line-height:1.35;}
+    .history-table-wrap{overflow:auto;max-height:70vh;}
+    .history-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .history-table th,.history-table td{border:1px solid #e5e7eb;padding:8px;text-align:left;}
+    .history-table tbody tr:nth-child(odd){background:#ffffff;}
+    .history-table tbody tr:nth-child(even){background:#f1f5f9;}
+    .history-actions button{margin-right:6px;}
+    .h-scrollbar{position:sticky;top:0;z-index:5;height:14px;background:#f1f5f9;overflow-x:auto;overflow-y:hidden;}
+    .h-scrollbar::-webkit-scrollbar{height:var(--scrollbar-size);}
+    .h-scrollbar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px;}
+    .h-scrollbar-inner{height:1px;}
+    tfoot tr td{font-weight:700;background:#eef2ff;}
+    .top-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;}
+  </style>
+</head>
+<body>
+  <div id="app-root">
+    <div class="top-bar">
+      <div style="font-weight:700;color:#2563eb;">Validation paye</div>
+      <button class="btn-secondary" onclick="logout()">Déconnexion</button>
+    </div>
+
+    <!-- Pointages à valider -->
+    <div class="card">
+      <div class="card-body">
+        <h2>Pointages à valider</h2>
+        <div class="flex" style="margin-bottom:12px;">
+          <label>Du <input type="date" id="fFrom"></label>
+          <label>Au <input type="date" id="fTo"></label>
+          <label>Salarié
+            <select id="fUser" style="min-width:180px;">
+              <option value="">Tous</option>
+            </select>
+          </label>
+          <button class="btn-primary" onclick="loadAValider()">Actualiser</button>
+          <button class="btn-gray" onclick="toggleManual()">Saisie manuelle</button>
+        </div>
+
+        <div id="manualForm" class="inline-form" style="display:none;">
+          <div class="flex" style="gap:8px;">
+            <label>Date <input type="date" id="mDate"></label>
+            <label>Salarié
+              <select id="mUser" style="min-width:160px;">
+                <option value="">Choisir…</option>
+              </select>
+            </label>
+            <label>Travail (hh:mm) <input type="time" step="60" id="mTrav" value="00:00" style="width:140px;"></label>
+            <label>Déplacement (hh:mm) <input type="time" step="60" id="mDepl" value="00:00" style="width:140px;"></label>
+            <label>Panier midi
+              <select id="mPM">
+                <option>Oui</option><option>Non</option>
+              </select>
+            </label>
+            <label>Panier soir <select id="mPS"><option>Non</option><option>Oui</option></select></label>
+            <label>Zone
+              <select id="mZone">
+                <option value="">--</option><option>1</option><option>2</option><option>3</option>
+                <option>4</option><option>5</option><option>Grand déplacement</option>
+              </select>
+            </label>
+            <label>Forfait trajet
+              <select id="mFT">
+                <option value="">--</option><option>&lt;3h</option><option>3-6h</option><option>&gt;6h</option>
+              </select>
+            </label>
+            <label>HSup (hh:mm) <input type="time" step="60" id="mHS" value="00:00" style="width:140px;"></label>
+            <label>HNuit (hh:mm) <input type="time" step="60" id="mHN" value="00:00" style="width:140px;"></label>
+            <label>Découchés <select id="mDec"><option>Non</option><option>Oui</option></select></label>
+            <label>Forfait WE <select id="mWE"><option>Non</option><option>Oui</option></select></label>
+            <label>Commentaire <input type="text" id="mCom" style="width:160px;"></label>
+            <button class="btn-primary" onclick="saveManual()">Enregistrer</button>
+          </div>
+          <div id="manualStatus" class="muted" style="margin-top:6px;"></div>
+        </div>
+
+        <div id="statusLoad" class="muted" style="margin-top:8px;"></div>
+        <div style="overflow:auto;max-height:65vh;">
+          <table id="tblAValider">
+            <thead>
+              <tr>
+                <th>Date</th><th>Salarié</th><th>Travail (hh:mm)</th><th>Déplacement (hh:mm)</th>
+                <th>Panier midi</th><th>Panier soir</th><th>Zone</th><th>Forfait trajet</th>
+                <th>Heures sup (hh:mm)</th><th>Heures nuit (hh:mm)</th><th>Découchés</th><th>Forfait WE</th><th>Commentaire</th><th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Récap validé -->
+    <div class="card">
+      <div class="card-body">
+        <h2>Récap validé</h2>
+        <div class="flex" style="margin-bottom:12px;">
+          <label>Du <input type="date" id="rFrom"></label>
+          <label>Au <input type="date" id="rTo"></label>
+          <label>Salarié
+            <select id="rUser" style="min-width:180px;">
+              <option value="">Tous</option>
+            </select>
+          </label>
+          <button class="btn-primary" onclick="loadRecap()">Actualiser</button>
+          <button class="btn-secondary" onclick="exportPDF()">Exporter PDF</button>
+        </div>
+        <div id="statusRecap" class="muted"></div>
+        <div style="overflow:auto;max-height:65vh;">
+          <table id="tblRecap">
+            <thead>
+              <tr>
+                <th>Date</th><th>Salarié</th><th>Travail</th><th>Déplacement</th>
+                <th>Panier midi</th><th>Panier soir</th><th>Zone</th><th>Forfait trajet</th>
+                <th>HSup</th><th>HNuit</th><th>Découchés</th><th>WE</th><th>Validé par</th><th>Validé le</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Récap par salarié (agrégé) -->
+    <div class="card">
+      <div class="card-body">
+        <h2>Récap par salarié (agrégé)</h2>
+        <div class="flex" style="margin-bottom:12px;">
+          <label>Du <input type="date" id="rsFrom"></label>
+          <label>Au <input type="date" id="rsTo"></label>
+          <label>Salarié
+            <select id="rsUser" style="min-width:180px;" onchange="applyRecapSalFilterAndRender()">
+              <option value="">Tous</option>
+            </select>
+          </label>
+          <button class="btn-primary" onclick="loadRecapSal()">Appliquer</button>
+          <button class="btn-secondary" onclick="exportRecapSalPDF()">Exporter PDF</button>
+        </div>
+        <div id="rsStatus" class="muted"></div>
+        <div class="table-wrap">
+          <table id="tblRecapSal">
+            <thead><tr id="rsHead"></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historique modifiable -->
+    <div class="card">
+      <div class="card-body">
+        <h2>Historique (modifier / exporter)</h2>
+        <div class="flex" style="margin-bottom:10px;">
+          <label>De <input type="date" id="hFrom"></label>
+          <label>À <input type="date" id="hTo"></label>
+          <label>Salarié
+            <select id="hUser" style="min-width:160px;">
+              <option value="">Tous</option>
+            </select>
+          </label>
+          <label>Camping
+            <select id="hCamp" style="min-width:160px;">
+              <option value="">Tous</option>
+            </select>
+          </label>
+          <button class="btn-primary" onclick="applyHistoryFilters()">Appliquer</button>
+          <button class="btn-secondary" onclick="resetHistoryFilters()">Réinitialiser</button>
+          <button class="btn-secondary" onclick="telechargerPDFHistorique()">Exporter PDF</button>
+        </div>
+        <div id="histStatus" class="muted" style="margin-bottom:8px;">Choisissez une plage puis Appliquer.</div>
+        <div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>
+        <div class="history-table-wrap">
+          <table class="history-table" id="histTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div> <!-- fin #app-root -->
+
+  <script>
+    /* --- Config locale / Apps Script --- */
+    const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
+    const API_BASE = USE_LOCAL ? 'http://localhost:3000/api' : '';
+    async function apiGet(path){ const r=await fetch(API_BASE+path); if(!r.ok) throw new Error(r.statusText); return r.json(); }
+    async function apiPost(path, body){ const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(r.statusText); return r.json(); }
+
+    /* --- Const UI --- */
+    const selectYesNo = `<select class="sel-yn"><option>Oui</option><option selected>Non</option></select>`;
+    const selectYesNoDefaultOui = `<select class="sel-yn"><option selected>Oui</option><option>Non</option></select>`;
+    const selectZone = `<select class="sel-zone"><option value="">--</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>Grand déplacement</option></select>`;
+    const selectTrajet = `<select class="sel-trajet"><option value="">--</option><option>&lt;3h</option><option>3-6h</option><option>&gt;6h</option></select>`;
+
+    /* --- State --- */
+    let currentUser='', employees=[], recapCache=[], recapSalCache=[], recapSalRaw=[], campAff=[], cachedHistory=null;
+    let historyHeaderIndices={ date:-1, nom:-1, camping:-1 };
+
+    /* --- Helpers --- */
+    function logout(){ try{localStorage.removeItem('userLogin');}catch(e){} window.location.href='INDEX.html'; }
+    function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60),mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
+    function hhmmToMin(v){ if(!v) return 0; const m=String(v).trim().match(/^(\d{1,2}):(\d{2})$/); if(!m) return 0; return parseInt(m[1],10)*60+parseInt(m[2],10); }
+    function fmtDateLocal(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+    function fmtDateDisplay(iso){ if(!iso) return ''; const p=iso.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso; }
+    function fmtDateTimeDisplay(val){ if(!val) return ''; const d=new Date(val); if(isNaN(d)) return val; const dd=String(d.getDate()).padStart(2,'0'),mm=String(d.getMonth()+1).padStart(2,'0'),yyyy=d.getFullYear(),hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm}/${yyyy} ${hh}:${mi}`; }
+    function fmtHHMM(v){ if(v==null) return ''; const s=String(v).trim(); const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/); return m?`${m[1].padStart(2,'0')}:${m[2]}`:s; }
+    function parseCellDateLocal(s){ if(!s) return null; s=s.toString().trim(); const iso=/^\d{4}-\d{2}-\d{2}$/; const dmy=/^(\d{2})\/(\d{2})\/(\d{4})$/; if(iso.test(s)) return new Date(s+'T00:00:00'); const m=s.match(dmy); if(m) return new Date(m[3]+'-'+m[2]+'-'+m[1]+'T00:00:00'); const d=new Date(s); return isNaN(d)?null:d; }
+    function toIsoDate(str){ if(!str) return ''; const s=String(str).trim(); const iso=/^\d{4}-\d{2}-\d{2}$/; const dmy=/^(\d{2})\/(\d{2})\/(\d{4})$/; if(iso.test(s)) return s; const m=s.match(dmy); if(m) return `${m[3]}-${m[2]}-${m[1]}`; const d=new Date(s); if(!isNaN(d)) return fmtDateLocal(d); return ''; }
+    function nowMeta(){ const d=new Date(); return { iso: fmtDateLocal(d), hm: d.toTimeString().slice(0,5) }; }
+
+    /* --- Init --- */
+    window.onload=()=>{
+      const t=fmtDateLocal(new Date());
+      ['fFrom','fTo','rFrom','rTo','rsFrom','rsTo','hFrom','hTo'].forEach(id=>{const el=document.getElementById(id); if(el) el.value=t;});
+      const params=new URLSearchParams(window.location.search);
+      currentUser=params.get('u')||''; try{ if(!currentUser) currentUser=localStorage.getItem('userLogin')||''; }catch(e){}
+      Promise.all([populateEmployees(), loadCampAff()]).then(()=>{ loadAValider(); loadRecap(); loadRecapSal(); applyHistoryFilters(); });
+    };
+
+    /* --- Employees & camps --- */
+    function populateEmployees(){
+      const fSel=fUser, rSel=rUser, mSel=mUser, hSel=hUser, rsSel=rsUser;
+      function fill(sel, includeEmpty){ if(!sel) return; sel.innerHTML=includeEmpty?'<option value="">Choisir…</option>':'<option value="">Tous</option>'; (employees||[]).forEach(n=>{const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);}); }
+      return new Promise(resolve=>{
+        const done=list=>{ employees=(list||[]).map(e=>e.nom||e).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})); fill(fSel,false); fill(rSel,false); fill(mSel,true); fill(hSel,false); fill(rsSel,false); resolve(); };
+        if(USE_LOCAL){ apiGet('/getEmployes').then(done).catch(()=>{employees=[]; fill(fSel,false); fill(rSel,false); fill(mSel,true); fill(hSel,false); fill(rsSel,false); resolve();}); return;}
+        google.script.run.withSuccessHandler(done).withFailureHandler(()=>{employees=[]; fill(fSel,false); fill(rSel,false); fill(mSel,true); fill(hSel,false); fill(rsSel,false); resolve();}).getEmployes();
+      });
+    }
+
+    function loadCampAff(){
+      return new Promise(resolve=>{
+        const done=list=>{ campAff=list||[]; populateHistoryCampSelect(); resolve(); };
+        if(USE_LOCAL){ apiGet('/getCampingsEtAffaires').then(done).catch(()=>{ campAff=[]; resolve(); }); return; }
+        google.script.run.withSuccessHandler(done).withFailureHandler(()=>{ campAff=[]; resolve(); }).getCampingsEtAffaires();
+      });
+    }
+
+    /* --- Pointages à valider --- */
+    function aggregateAValider(list){
+      const map=new Map();
+      (list||[]).forEach(r=>{
+        const key=(r.salarie||'').trim().toLowerCase(); if(!key) return;
+        if(!map.has(key)) map.set(key,{salarie:r.salarie,travailMin:0,deplacementMin:0});
+        const obj=map.get(key);
+        obj.travailMin+=parseInt(r.travailMin||0,10);
+        obj.deplacementMin+=parseInt(r.deplacementMin||0,10);
+      });
+      return [...map.values()].sort((a,b)=>a.salarie.localeCompare(b.salarie,'fr',{sensitivity:'base'}));
+    }
+
+    function loadAValider(){
+      statusLoad.textContent="Chargement...";
+      const payload={dateFrom:fFrom.value,dateTo:fTo.value,salarie:fUser.value};
+      const onSuccess=data=>renderAValider(data);
+      const onError=err=>{ statusLoad.textContent="Erreur: "+err; };
+      if(USE_LOCAL) apiPost('/getPointagesAValider',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPointagesAValider(payload.dateFrom,payload.dateTo,payload.salarie);
+    }
+
+    function renderAValider(list){
+      const tb=document.querySelector('#tblAValider tbody'), tf=document.querySelector('#tblAValider tfoot');
+      tb.innerHTML=''; tf.innerHTML='';
+      if(!list||!list.length){ statusLoad.textContent="Aucun pointage à valider."; return; }
+      const agg=aggregateAValider(list); let totT=0, totD=0; const defaultDate=fFrom.value||'';
+      agg.forEach(r=>{
+        totT+=parseInt(r.travailMin||0,10); totD+=parseInt(r.deplacementMin||0,10);
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td><input type="date" class="in-date" value="${defaultDate}" style="width:150px"></td>
+          <td>${r.salarie}</td>
+          <td><input type="text" class="in-trav" value="${minToHHMM(r.travailMin)}" style="width:80px"></td>
+          <td><input type="text" class="in-depl" value="${minToHHMM(r.deplacementMin)}" style="width:80px"></td>
+          <td>${selectYesNoDefaultOui}</td>
+          <td>${selectYesNo}</td>
+          <td>${selectZone}</td>
+          <td>${selectTrajet}</td>
+          <td><input type="text" class="in-hsup" value="0:00" style="width:80px"></td>
+          <td><input type="text" class="in-hnuit" value="0:00" style="width:80px"></td>
+          <td>${selectYesNo}</td>
+          <td>${selectYesNo}</td>
+          <td><input type="text" class="in-comment" placeholder="Commentaire"></td>
+          <td><button class="btn-primary" onclick="validerLigne(this)">Valider</button></td>`;
+        tb.appendChild(tr);
+      });
+      const trTot=document.createElement('tr');
+      trTot.innerHTML=`<td colspan="2">Total (somme horaires par salarié)</td><td>${minToHHMM(totT)}</td><td>${minToHHMM(totD)}</td><td colspan="10"></td>`;
+      tf.appendChild(trTot);
+      statusLoad.textContent=agg.length+" salarié(s) à valider.";
+    }
+
+    function validerLigne(btn){
+      const tr=btn.closest('tr'); if(!tr) return;
+      const payload={
+        date: tr.querySelector('.in-date')?.value || tr.children[0].textContent,
+        salarie: tr.children[1].textContent,
+        travailMin: hhmmToMin(tr.querySelector('.in-trav').value),
+        deplacementMin: hhmmToMin(tr.querySelector('.in-depl').value),
+        panierMidi: tr.querySelectorAll('.sel-yn')[0].value,
+        panierSoir: tr.querySelectorAll('.sel-yn')[1].value,
+        zone: tr.querySelector('.sel-zone').value,
+        forfaitTrajet: tr.querySelector('.sel-trajet').value,
+        heuresSupMin: hhmmToMin(tr.querySelector('.in-hsup').value),
+        heuresNuitMin: hhmmToMin(tr.querySelector('.in-hnuit').value),
+        decouches: tr.querySelectorAll('.sel-yn')[2].value,
+        forfaitWeekend: tr.querySelectorAll('.sel-yn')[3].value,
+        commentaire: tr.querySelector('.in-comment').value,
+        validePar: currentUser || ''
+      };
+      btn.disabled=true; btn.textContent="OK...";
+      const onSuccess=()=>{ tr.remove(); loadAValider(); };
+      const onError=err=>{ alert("Erreur: "+err); btn.disabled=false; btn.textContent="Valider"; };
+      if(USE_LOCAL) apiPost('/validerPointage',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).validerPointage(payload);
+    }
+
+    /* --- Saisie manuelle --- */
+    function toggleManual(){
+      const m=manualForm; const show=m.style.display==='none'||m.style.display===''; m.style.display=show?'block':'none';
+      if(show){ const t=fmtDateLocal(new Date()); mDate.value=t; mTrav.value="00:00"; mDepl.value="00:00"; mHS.value="00:00"; mHN.value="00:00"; manualStatus.textContent=''; }
+    }
+    function closeManualForm(){ manualForm.style.display='none'; }
+    function saveManual(){
+      const status=manualStatus;
+      if(!mDate.value || !mUser.value){ status.textContent="Date et salarié requis."; status.className="muted status err"; return; }
+      const payload={
+        date:mDate.value, salarie:mUser.value,
+        travailMin: hhmmToMin(mTrav.value), deplacementMin: hhmmToMin(mDepl.value),
+        panierMidi: mPM.value, panierSoir: mPS.value, zone: mZone.value, forfaitTrajet: mFT.value,
+        heuresSupMin: hhmmToMin(mHS.value), heuresNuitMin: hhmmToMin(mHN.value),
+        decouches: mDec.value, forfaitWeekend: mWE.value, commentaire: mCom.value, validePar: currentUser || ''
+      };
+      status.textContent="Enregistrement...";
+      const onSuccess=()=>{ status.textContent="Validé"; status.className="status ok"; closeManualForm(); loadRecap(); };
+      const onError=err=>{ status.textContent="Erreur: "+err; status.className="status err"; };
+      if(USE_LOCAL) apiPost('/validerPointage',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).validerPointage(payload);
+    }
+
+    /* --- Récap validé --- */
+    function formatDeplacementDetail(r){
+      const total=minToHHMM(r.deplacementMin); const lines=[];
+      if(r.zone || r.forfaitTrajet){ const z=r.zone?`Zone ${r.zone}`:'Zone ?'; const ft=r.forfaitTrajet||'FT ?'; lines.push(`${z} / ${ft} : ${total}`); }
+      return { text: lines.length ? [`Total : ${total}`].concat(lines).join('\n') : `Total : ${total}`, html: lines.length ? `<div>Total : ${total}</div><div class="small-muted">${lines.join('<br>')}</div>` : `<div>Total : ${total}</div>` };
+    }
+
+    function loadRecap(){
+      statusRecap.textContent="Chargement...";
+      const payload={dateFrom:rFrom.value,dateTo:rTo.value,salarie:rUser.value};
+      const onSuccess=list=>{ recapCache=list||[]; renderRecap(recapCache); statusRecap.textContent=recapCache.length+" ligne(s) validées."; };
+      const onError=err=>{ statusRecap.textContent="Erreur: "+err; };
+      if(USE_LOCAL) apiPost('/getPayeValidee',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPayeValidee(payload.dateFrom,payload.dateTo,payload.salarie);
+    }
+
+    function renderRecap(list){
+      const tb=document.querySelector('#tblRecap tbody'); tb.innerHTML='';
+      if(!list||!list.length){ tb.innerHTML='<tr><td colspan="15" class="muted">Aucune donnée.</td></tr>'; return; }
+      list.forEach(r=>{
+        const depl=formatDeplacementDetail(r);
+        const tr=document.createElement('tr');
+        tr.dataset.origDate=r.date; tr.dataset.origSalarie=r.salarie;
+        tr.innerHTML=`
+          <td>${r.date}</td><td>${r.salarie}</td><td>${minToHHMM(r.travailMin)}</td><td>${depl.html}</td>
+          <td><span class="pill">${r.panierMidi||''}</span></td><td><span class="pill">${r.panierSoir||''}</span></td>
+          <td>${r.zone||''}</td><td>${r.forfaitTrajet||''}</td>
+          <td>${minToHHMM(r.heuresSupMin)}</td><td>${minToHHMM(r.heuresNuitMin)}</td>
+          <td>${r.decouches||''}</td><td>${r.forfaitWeekend||''}</td>
+          <td>${r.validePar||''}</td><td>${fmtDateTimeDisplay(r.valideLe)}</td>
+          <td style="white-space:nowrap;"><button class="btn-secondary btn-icon" onclick="editRecapRow(this)">✏️</button><button class="btn-secondary btn-icon" onclick="deleteRecapRow(this)">🗑️</button></td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function editRecapRow(btn){
+      const tr=btn.closest('tr'); if(!tr) return;
+      const isEdit=tr.dataset.editing==="1"; const tds=tr.children;
+      if(!isEdit){
+        tr.dataset.editing="1"; btn.textContent="💾";
+        const vDate=tds[0].textContent.trim(), vTrav=tds[2].textContent.trim(), vZone=tds[6].textContent.trim(), vFT=tds[7].textContent.trim(), vHS=tds[8].textContent.trim(), vHN=tds[9].textContent.trim(), vDec=tds[10].textContent.trim(), vWE=tds[11].textContent.trim(), vPM=tds[4].textContent.trim(), vPS=tds[5].textContent.trim(), vDeplText=tds[3].innerText.split('\n')[0].replace('Total :','').trim();
+        tds[0].innerHTML=`<input type="date" class="rc-date" value="${vDate}" style="width:140px">`;
+        tds[2].innerHTML=`<input type="text" class="rc-trav" value="${vTrav}" style="width:80px">`;
+        tds[3].innerHTML=`<input type="text" class="rc-depl" value="${vDeplText||'0:00'}" style="width:80px">`;
+        tds[4].innerHTML=buildYesNoSelect(vPM,true);
+        tds[5].innerHTML=buildYesNoSelect(vPS,false);
+        tds[6].innerHTML=buildZoneSelect(vZone);
+        tds[7].innerHTML=buildTrajetSelect(vFT);
+        tds[8].innerHTML=`<input type="text" class="rc-hsup" value="${vHS}" style="width:80px">`;
+        tds[9].innerHTML=`<input type="text" class="rc-hnuit" value="${vHN}" style="width:80px">`;
+        tds[10].innerHTML=buildYesNoSelect(vDec,false);
+        tds[11].innerHTML=buildYesNoSelect(vWE,false);
+      } else {
+        const payload={
+          origDate: tr.dataset.origDate || tds[0].textContent,
+          origSalarie: tr.dataset.origSalarie || tds[1].textContent,
+          date: tds[0].querySelector('.rc-date')?.value || tds[0].textContent,
+          salarie: tds[1].textContent,
+          travailMin: hhmmToMin(tds[2].querySelector('.rc-trav').value),
+          deplacementMin: hhmmToMin(tds[3].querySelector('.rc-depl').value),
+          panierMidi: tds[4].querySelector('.sel-yn').value,
+          panierSoir: tds[5].querySelector('.sel-yn').value,
+          zone: tds[6].querySelector('.sel-zone').value,
+          forfaitTrajet: tds[7].querySelector('.sel-trajet').value,
+          heuresSupMin: hhmmToMin(tds[8].querySelector('.rc-hsup').value),
+          heuresNuitMin: hhmmToMin(tds[9].querySelector('.rc-hnuit').value),
+          decouches: tds[10].querySelector('.sel-yn').value,
+          forfaitWeekend: tds[11].querySelector('.sel-yn').value
+        };
+        btn.disabled=true; btn.textContent="…";
+        const onSuccess=()=>{ btn.disabled=false; btn.textContent="✏️"; tr.dataset.editing=""; loadRecap(); };
+        const onError=err=>{ alert("Erreur: "+err); btn.disabled=false; btn.textContent="✏️"; };
+        if(USE_LOCAL) apiPost('/updatePayeValidation',payload).then(onSuccess).catch(onError);
+        else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).updatePayeValidation(payload);
+      }
+    }
+
+    function deleteRecapRow(btn){
+      const tr=btn.closest('tr'); if(!tr) return;
+      if(!confirm("Supprimer cette ligne ?")) return;
+      btn.disabled=true; btn.textContent="…";
+      const payload={ date: tr.children[0].textContent, salarie: tr.children[1].textContent };
+      const onSuccess=()=>{ tr.remove(); };
+      const onError=err=>{ alert("Erreur: "+err); btn.disabled=false; btn.textContent="🗑️"; };
+      if(USE_LOCAL) apiPost('/deletePayeValidation',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).deletePayeValidation(payload);
+    }
+
+    async function exportPDF(){
+      if(!recapCache.length){ alert("Aucune donnée à exporter."); return; }
+      try{
+        await ensureJsPDF(); const { jsPDF }=window.jspdf; const doc=new jsPDF('l','pt','a4');
+        const df=rFrom.value||'', dt=rTo.value||'', sal=rUser.value||'', meta=nowMeta(), exportedBy=currentUser||'';
+        const periodText=(df||dt)?`Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`:'Période : toutes dates';
+        const salText='Salarié : '+(sal||'Tous'); const genText='Généré le : '+fmtDateDisplay(meta.iso)+' '+meta.hm; const byText='Exporté par : '+(exportedBy||'—');
+        doc.setFontSize(14); doc.text('Récap validé',16,22);
+        doc.setFontSize(11); doc.text(periodText,16,40); doc.text(salText,16,56); doc.text(genText,16,72); doc.text(byText,16,88);
+        const head=[["Date","Salarié","Travail","Déplacement","Panier midi","Panier soir","Zone","Forfait trajet","HSup","HNuit","Découchés","WE","Validé par","Validé le"]];
+        const body=recapCache.map(r=>{ const depl=formatDeplacementDetail(r).text; return [r.date,r.salarie,minToHHMM(r.travailMin),depl,r.panierMidi||'',r.panierSoir||'',r.zone||'',r.forfaitTrajet||'',minToHHMM(r.heuresSupMin),minToHHMM(r.heuresNuitMin),r.decouches||'',r.forfaitWeekend||'',r.validePar||'',fmtDateTimeDisplay(r.valideLe)].map(sanitizePdfCell); });
+        doc.autoTable({ head:[head[0].map(sanitizePdfCell)], body, styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:[37,99,235],textColor:255}, margin:{top:116,left:16,right:16,bottom:16} });
+        doc.save('paye-validee.pdf');
+      }catch(e){ alert("Erreur PDF: "+e); }
+    }
+
+    /* --- Récap par salarié (agrégé) --- */
+    function loadRecapSal(){
+      if(rsStatus) rsStatus.textContent="Chargement...";
+      const payload={dateFrom:rsFrom.value,dateTo:rsTo.value,salarie:rsUser.value};
+      const onSuccess=list=>{ recapSalRaw=list||[]; applyRecapSalFilterAndRender(); if(rsStatus) rsStatus.textContent=recapSalCache.length?(recapSalCache.length+" salarié(s) agrégés."):"Aucune donnée."; };
+      const onError=err=>{ if(rsStatus) rsStatus.textContent="Erreur: "+err; };
+      if(USE_LOCAL) apiPost('/getRecapParSalarie',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getRecapParSalarie(payload.dateFrom,payload.dateTo,payload.salarie);
+    }
+
+    function applyRecapSalFilterAndRender(){
+      const sel=(rsUser?.value||'').toLowerCase();
+      recapSalCache = sel ? (recapSalRaw||[]).filter(r=>(r.salarie||'').toLowerCase()===sel) : (recapSalRaw||[]);
+      renderRecapSal(recapSalCache);
+    }
+
+    function renderRecapSal(list){
+      const thead=rsHead, tbody=document.querySelector('#tblRecapSal tbody');
+      if(tbody) tbody.innerHTML='';
+      if(!list||!list.length){ if(rsStatus) rsStatus.textContent="Aucune donnée."; if(thead) thead.innerHTML=''; return; }
+      const headCells=["Salarié","Travail (hh:mm)","Déplacement (hh:mm + zone/FT)","HSup (hh:mm)","HNuit (hh:mm)","Panier midi (#)","Panier soir (#)","Découchés (#)"];
+      if(thead) thead.innerHTML=headCells.map(h=>`<th>${h}</th>`).join('');
+      list.forEach(r=>{
+        const totalDepl="Total : "+minToHHMM(r.deplacementMin);
+        const lines=[]; const combos=r.combos?Object.keys(r.combos):[];
+        if(combos.length){ combos.forEach(c=>{ const parts=c.split("|||"); const z=parts[0]||""; const ft=parts[1]||""; lines.push(`Zone ${z||'?'} / ${ft||'FT ?'} : ${minToHHMM(r.combos[c]||0)}`); }); }
+        else{
+          if(r.zones) Object.keys(r.zones).forEach(z=>lines.push(`Zone ${z}: ${minToHHMM(r.zones[z]||0)}`));
+          if(r.trajets) Object.keys(r.trajets).forEach(t=>lines.push(`FT ${t}: ${minToHHMM(r.trajets[t]||0)}`));
+        }
+        const detailHtml=lines.length?`<div class="small-muted">${lines.join('<br>')}</div>`:'';
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td>${r.salarie||''}</td>
+          <td>${minToHHMM(r.travailMin)}</td>
+          <td>${totalDepl}${detailHtml?'<br>'+detailHtml:''}</td>
+          <td>${minToHHMM(r.heuresSupMin)}</td>
+          <td>${minToHHMM(r.heuresNuitMin)}</td>
+          <td>${r.panierMidi||0}</td>
+          <td>${r.panierSoir||0}</td>
+          <td>${r.decouches||0}</td>`;
+        tbody.appendChild(tr);
+      });
+      if(rsStatus) rsStatus.textContent=list.length+" salarié(s) agrégés.";
+    }
+
+    async function exportRecapSalPDF(){
+      applyRecapSalFilterAndRender(); // respecte le filtre salarié
+      if(!recapSalCache.length){ alert("Aucune donnée à exporter."); return; }
+      try{
+        await ensureJsPDF(); const { jsPDF }=window.jspdf; const doc=new jsPDF('l','pt','a4');
+        const df=rsFrom.value||'', dt=rsTo.value||'', sel=rsUser.value||'', meta=nowMeta(), exportedBy=currentUser||'';
+        const periodText=(df||dt)?`Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`:'Période : toutes dates';
+        const salText='Salarié : '+(sel||'Tous'); const genText='Généré le : '+fmtDateDisplay(meta.iso)+' '+meta.hm; const byText='Exporté par : '+(exportedBy||'—');
+        doc.setFontSize(14); doc.text('Récap par salarié (agrégé)',16,22);
+        doc.setFontSize(11); doc.text(periodText,16,40); doc.text(salText,16,56); doc.text(genText,16,72); doc.text(byText,16,88);
+        const head=[["Salarié","Travail (hh:mm)","Déplacement (hh:mm + zone/FT)","HSup (hh:mm)","HNuit (hh:mm)","Panier midi (#)","Panier soir (#)","Découchés (#)"]];
+        const body=recapSalCache.map(r=>{
+          const lines=[]; const combos=r.combos?Object.keys(r.combos):[];
+          if(combos.length){ combos.forEach(c=>{ const parts=c.split("|||"); const z=parts[0]||""; const ft=parts[1]||""; lines.push(`Zone ${z||'?'} / ${ft||'FT ?'} : ${minToHHMM(r.combos[c]||0)}`); }); }
+          else{
+            if(r.zones) Object.keys(r.zones).forEach(z=>lines.push(`Zone ${z}: ${minToHHMM(r.zones[z]||0)}`));
+            if(r.trajets) Object.keys(r.trajets).forEach(t=>lines.push(`FT ${t}: ${minToHHMM(r.trajets[t]||0)}`));
+          }
+          const detailCell=['Total : '+minToHHMM(r.deplacementMin)].concat(lines).join('\n');
+          return [r.salarie||'', minToHHMM(r.travailMin), detailCell, minToHHMM(r.heuresSupMin), minToHHMM(r.heuresNuitMin), r.panierMidi||0, r.panierSoir||0, r.decouches||0];
+        });
+        doc.autoTable({ head, body, styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:[37,99,235],textColor:255}, alternateRowStyles:{fillColor:[240,245,255]}, margin:{top:112,bottom:16,left:16,right:16} });
+        doc.save('recap_paye_salaries.pdf');
+      }catch(e){ alert(e && e.message ? e.message : e); }
+    }
+
+    /* --- Historique --- */
+    function setDefaultHistoryToday(){ const t=fmtDateLocal(new Date()); if(hFrom) hFrom.value=t; if(hTo) hTo.value=t; }
+    function populateHistoryCampSelect(){ const sel=hCamp; if(!sel) return; sel.innerHTML='<option value="">Tous</option>'; const camps=[...new Set((campAff||[]).map(c=>String(c.camping||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})); camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); }); }
+
+    async function applyHistoryFilters(){
+      const status=histStatus; if(status) status.textContent='Chargement...';
+      const payload={dateFrom:hFrom.value||'',dateTo:hTo.value||'',salarie:hUser.value||'',camping:hCamp.value||''};
+      const onSuccess=data=>{ cachedHistory=data||[]; populateHistoryFiltersFromData(); renderHistory(filterCachedHistory()); if(status) status.textContent=(cachedHistory.length>1?(cachedHistory.length-1):0)+' ligne(s)'; };
+      const onError=err=>{ cachedHistory=null; renderHistory([]); if(status) status.textContent='Erreur: '+err; };
+      if(USE_LOCAL) apiPost('/getHistoriquePointagesFiltered',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getHistoriquePointagesFiltered(payload.dateFrom,payload.dateTo,payload.salarie,payload.camping);
+    }
+
+    function resetHistoryFilters(){ setDefaultHistoryToday(); if(hUser) hUser.value=''; if(hCamp) hCamp.value=''; renderHistory([]); histStatus.textContent='Choisissez une plage puis Appliquer.'; }
+
+    function populateHistoryFiltersFromData(){
+      if(!cachedHistory||cachedHistory.length<2) return;
+      const header=cachedHistory[0].map(h=>(h||'').toString().toLowerCase());
+      historyHeaderIndices={ date: header.findIndex(h=>h.includes('date')), nom: header.findIndex(h=>h.includes('nom')), camping: header.findIndex(h=>h.includes('camping')) };
+      const salSelect=hUser, campSelect=hCamp; if(!salSelect||!campSelect) return;
+      const names=new Set(employees||[]), camps=new Set();
+      for(let i=1;i<cachedHistory.length;i++){ const row=cachedHistory[i]; if(historyHeaderIndices.nom>=0) names.add((row[historyHeaderIndices.nom]||'').toString().trim()); if(historyHeaderIndices.camping>=0) camps.add((row[historyHeaderIndices.camping]||'').toString().trim()); }
+      salSelect.innerHTML='<option value="">Tous</option>'; [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); });
+      campSelect.innerHTML='<option value="">Tous</option>'; [...camps].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); });
+    }
+
+    function filterCachedHistory(){
+      if(!cachedHistory) return [];
+      const header=cachedHistory[0], rows=cachedHistory.slice(1);
+      const fromVal=hFrom.value, toVal=hTo.value, sal=hUser.value, camp=hCamp.value;
+      const dateFrom=fromVal?new Date(fromVal+'T00:00:00'):null, dateTo=toVal?new Date(toVal+'T23:59:59'):null;
+      const idxDate=historyHeaderIndices.date, idxNom=historyHeaderIndices.nom, idxCamp=historyHeaderIndices.camping;
+      const filtered=rows.filter(r=>{
+        let ok=true;
+        if(idxDate>=0 && (dateFrom||dateTo)){
+          const cd=parseCellDateLocal(r[idxDate]); if(!cd) return false;
+          if(dateFrom&&cd<dateFrom) ok=false;
+          if(dateTo&&cd>dateTo) ok=false;
+        }
+        if(idxNom>=0 && sal){ if((r[idxNom]||'').toString().trim().toLowerCase()!==sal.toLowerCase()) ok=false; }
+        if(idxCamp>=0 && camp){ if((r[idxCamp]||'').toString().trim().toLowerCase()!==camp.toLowerCase()) ok=false; }
+        return ok;
+      });
+      return [header].concat(filtered);
+    }
+
+    function buildCampingSelect(current){
+      const curr=(current||'').trim(); const sel=document.createElement('select'); sel.innerHTML='<option value="">--</option>';
+      const camps=[...new Set((campAff||[]).map(c=>String(c.camping||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===curr) o.selected=true; sel.appendChild(o); });
+      sel.onchange=function(){ const affSel=this.parentElement.querySelector('select[data-kind="affaire"]'); if(affSel) fillAffaireSelect(affSel,this.value,''); };
+      return sel;
+    }
+    function fillAffaireSelect(sel,camping,currentAff){
+      const campKey=(camping||'').trim().toLowerCase(); const curAff=(currentAff||'').trim();
+      sel.innerHTML='<option value="">--</option>';
+      const filtered=campKey?(campAff||[]).filter(o=>String(o.camping||'').trim().toLowerCase()===campKey):(campAff||[]);
+      const affaires=[...new Set(filtered.map(o=>String(o.affaire||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      affaires.forEach(a=>{ const op=document.createElement('option'); op.value=a; op.textContent=a; if(a===curAff) op.selected=true; sel.appendChild(op); });
+    }
+    function buildAffaireSelect(camping,currentAff){ const sel=document.createElement('select'); sel.dataset.kind="affaire"; fillAffaireSelect(sel,camping,currentAff); return sel; }
+
+    function startEditHistoryRow(btn){
+      const tr=btn.closest('tr'); if(!tr) return; tr.dataset.editing="1";
+      const cells=[...tr.children]; const dateCell=cells[0], campCell=cells[4], affCell=cells[5], commentCell=cells[6], debutCell=cells[7], pauseCell=cells[8], repriseCell=cells[9], finCell=cells[10];
+      const dateVal=toIsoDate(dateCell.dataset.raw||dateCell.textContent.trim());
+      const campVal=campCell.textContent.trim(), affVal=affCell.textContent.trim();
+      const debVal=debutCell.textContent.trim(), pauseVal=pauseCell.textContent.trim(), repVal=repriseCell.textContent.trim(), finVal=finCell.textContent.trim();
+      dateCell.innerHTML=`<input type="date" value="${dateVal||''}">`;
+      campCell.innerHTML=''; campCell.appendChild(buildCampingSelect(campVal));
+      affCell.innerHTML=''; affCell.appendChild(buildAffaireSelect(campVal,affVal));
+      commentCell.innerHTML=`<input type="text" value="${commentCell.textContent.trim()||''}" style="width:180px;">`;
+      debutCell.innerHTML=`<input type="time" value="${debVal||''}">`;
+      pauseCell.innerHTML=`<input type="time" value="${pauseVal||''}">`;
+      repriseCell.innerHTML=`<input type="time" value="${repVal||''}">`;
+      finCell.innerHTML=`<input type="time" value="${finVal||''}">`;
+      btn.textContent='💾'; btn.onclick=()=>saveHistoryRow(btn);
+      const cancel=document.createElement('button'); cancel.className='btn-secondary'; cancel.textContent='Annuler'; cancel.onclick=()=>{ applyHistoryFilters(); }; btn.parentElement.appendChild(cancel);
+    }
+
+    function saveHistoryRow(btn){
+      const tr=btn.closest('tr'); if(!tr) return; const rowIndex=tr.dataset.rowIndex; if(!rowIndex){ alert("Index de ligne manquant"); return; }
+      const tds=[...tr.children];
+      const val={
+        date: tds[0].querySelector('input[type="date"]')?.value || '',
+        camping: tds[4].querySelector('select')?.value || '',
+        affaire: tds[5].querySelector('select[data-kind="affaire"]')?.value || '',
+        commentaire: tds[6].querySelector('input')?.value || '',
+        debut: tds[7].querySelector('input[type="time"]')?.value || '',
+        pause: tds[8].querySelector('input[type="time"]')?.value || '',
+        reprise: tds[9].querySelector('input[type="time"]')?.value || '',
+        fin: tds[10].querySelector('input[type="time"]')?.value || ''
+      };
+      btn.disabled=true; btn.textContent='...';
+      const onSuccess=()=>{ applyHistoryFilters(); };
+      const onError=err=>{ alert("Erreur: "+err); btn.disabled=false; btn.textContent='💾'; };
+      if(USE_LOCAL) apiPost('/updateHistoriquePointage',{rowIndex:Number(rowIndex),payload:val}).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).updateHistoriquePointage(Number(rowIndex),val);
+    }
+
+    function deleteHistoryRow(btn){
+      const tr=btn.closest('tr'); if(!tr) return; const rowIndex=tr.dataset.rowIndex; if(!rowIndex){ alert("Index de ligne manquant"); return; }
+      if(!confirm("Supprimer cette ligne ?")) return;
+      btn.disabled=true; btn.textContent='...';
+      const onSuccess=()=>{ applyHistoryFilters(); };
+      const onError=err=>{ alert("Erreur: "+err); btn.disabled=false; btn.textContent='🗑'; };
+      if(USE_LOCAL) apiPost('/deleteHistoriquePointage',{rowIndex:Number(rowIndex)}).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).deleteHistoriquePointage(Number(rowIndex));
+    }
+
+    function renderHistory(data){
+      const table=histTable, thead=table.querySelector('thead'), tbody=table.querySelector('tbody');
+      thead.innerHTML=''; tbody.innerHTML='';
+      if(!data||!data.length){ histStatus.textContent='Aucun historique.'; return; }
+      const header=data[0]; const hasRowIdx=header[header.length-1]==='ROW_INDEX'; const visibleHeader=hasRowIdx?header.slice(0,-1):header;
+      const trh=document.createElement('tr'); visibleHeader.forEach(h=>{ const th=document.createElement('th'); th.textContent=h; trh.appendChild(th); }); const thAct=document.createElement('th'); thAct.textContent='Actions'; trh.appendChild(thAct); thead.appendChild(trh);
+      for(let i=1;i<data.length;i++){
+        const row=data[i]; const rowIndex=hasRowIdx?row[row.length-1]:''; const cells=hasRowIdx?row.slice(0,-1):row; const tr=document.createElement('tr'); tr.dataset.rowIndex=rowIndex;
+        cells.forEach(c=>{ const td=document.createElement('td'); td.dataset.raw=c||''; td.textContent=fmtHHMM(c)||''; tr.appendChild(td); });
+        const tdActions=document.createElement('td'); tdActions.className='history-actions'; tdActions.innerHTML=`<button class="btn-secondary btn-icon" onclick="startEditHistoryRow(this)">✎</button><button class="btn-secondary btn-icon" onclick="deleteHistoryRow(this)">🗑</button>`; tr.appendChild(tdActions);
+        tbody.appendChild(tr);
+      }
+      const wrap=document.querySelector('.history-table-wrap'), hsb=document.querySelector('.h-scrollbar'), hsbInner=document.querySelector('.h-scrollbar-inner');
+      if(wrap&&hsb&&hsbInner){ hsbInner.style.width=wrap.scrollWidth+'px'; hsb.scrollLeft=wrap.scrollLeft; hsb.onscroll=()=>wrap.scrollLeft=hsb.scrollLeft; wrap.onscroll=()=>hsb.scrollLeft=wrap.scrollLeft; }
+    }
+
+    async function telechargerPDFHistorique(){
+      const status=histStatus;
+      try{
+        const data=filterCachedHistory();
+        if(!data||data.length<=1) throw new Error("Aucune donnée à exporter. Clique Appliquer d'abord.");
+        const header=data[0]; const hasRowIdx=header[header.length-1]==='ROW_INDEX';
+        const headForPdf=hasRowIdx?header.slice(0,-1):header;
+        const bodyForPdf=data.slice(1).map(r=>hasRowIdx?r.slice(0,-1):r);
+        await ensureJsPDF(); const { jsPDF }=window.jspdf; const doc=new jsPDF('l','pt','a4');
+        const df=hFrom.value||'', dt=hTo.value||'', sal=hUser.value||'', campSel=hCamp.value||'', meta=nowMeta(), exportedBy=currentUser||'';
+        const periodText=(df||dt)?`Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`:'Période : toutes dates';
+        const salText='Salarié : '+(sal||'Tous'); const campText='Camping : '+(campSel||'Tous'); const genText='Généré le : '+fmtDateDisplay(meta.iso)+' '+meta.hm; const byText='Exporté par : '+(exportedBy||'—');
+        doc.setFontSize(14); doc.text('Historique pointages',16,22);
+        doc.setFontSize(11); doc.text(periodText,16,40); doc.text(salText,16,56); doc.text(campText,16,72); doc.text(genText,16,88); doc.text(byText,16,104);
+        doc.autoTable({ head:[headForPdf.map(h=>h||'')], body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')), styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:[37,99,235],textColor:255}, alternateRowStyles:{fillColor:[240,245,255]}, margin:{top:128,bottom:16,left:16,right:16} });
+        doc.save('historique_pointages.pdf');
+      }catch(e){ alert(e && e.message ? e.message : e); }
+      finally{ if(status) status.textContent=''; }
+    }
+
+    /* --- Widgets --- */
+    function buildYesNoSelect(val,midi=false){ const isOui=(val||'').trim()==='Oui'; const defaultOui=midi; const ouiSel=isOui||(!isOui&&defaultOui); return `<select class="sel-yn"><option${ouiSel?' selected':''}>Oui</option><option${!ouiSel?' selected':''}>Non</option></select>`; }
+    function buildZoneSelect(val){ const zones=["","1","2","3","4","5","Grand déplacement"]; return `<select class="sel-zone">`+zones.map(z=>`<option value="${z}"${z===val?' selected':''}>${z||'--'}</option>`).join('')+`</select>`; }
+    function buildTrajetSelect(val){ const opts=["","<3h","3-6h",">6h"]; return `<select class="sel-trajet">`+opts.map(o=>`<option${o===val?' selected':''}>${o||'--'}</option>`).join('')+`</select>`; }
+    function sanitizePdfCell(v){ return String(v ?? '').replace(/→/g,' au ').replace(/…/g,'...'); }
+
+    async function ensureJsPDF(){
+      const needJsPDF=(typeof window.jspdf==='undefined'||typeof window.jspdf.jsPDF==='undefined');
+      const needAuto=(typeof window.jspdf==='undefined'||!window.jspdf.jsPDF||!window.jspdf.jsPDF.API?.autoTable);
+      if(!needJsPDF&&!needAuto) return;
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+      if(typeof window.jspdf==='undefined'||typeof window.jspdf.jsPDF==='undefined') throw new Error("jsPDF non disponible après chargement.");
+    }
+    function loadScriptOnce(src,label){
+      return new Promise((resolve,reject)=>{
+        const existing=document.querySelector(`script[data-src="${src}"]`);
+        if(existing){ existing.addEventListener('load',()=>resolve()); existing.addEventListener('error',()=>reject(new Error('Échec chargement '+src))); return; }
+        const s=document.createElement('script'); s.src=src; s.async=true; s.defer=true; s.dataset.src=src;
+        s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Échec chargement '+src));
+        document.head.appendChild(s);
+      });
+    }
+  </script>
+</body>
+</html>

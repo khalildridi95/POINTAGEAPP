@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Admin - PCELEC (local)</title>
+
+  <!-- jsPDF & autotable -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root{
+      --primary:#2563eb;--primary-light:#e2e8ff;--muted:#64748b;--bg:#f5f6fb;--card:#fff;--radius:14px;
+      --border:#e2e8f0;--shadow:0 12px 30px rgba(0,0,0,0.08);
+      --table-stripe:#f8fafc;--table-hover:#eef2ff;
+      --planning-col-width:250px;
+      --scrollbar-size:12px;
+      --success:#16a34a;--warn:#f97316;--danger:#dc2626;
+    }
+    html,body{margin:0;padding:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#0f172a;height:100%;overflow-x:hidden;}
+    body{padding:20px;font-size:15px;min-height:100%;-webkit-overflow-scrolling:touch;}
+    .grid{display:grid;gap:16px;}
+    .card{background:var(--card);border-radius:var(--radius);padding:0;box-shadow:var(--shadow);border:1px solid #e5e7eb;overflow:hidden;}
+    .card-body{padding:20px;}
+    h2{margin:0 0 12px;color:#0f172a;}
+    label{display:block;margin:10px 0 4px;font-weight:600;color:#334155;}
+    input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:15px;box-sizing:border-box;background:#fff;}
+    button{color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600;}
+    button.secondary{background:#475569;}
+    button.ghost{background:#fff;color:#0f172a;border:1px solid #var(--border);}
+    .btn-primary{background:#2563eb;}
+    .btn-green{background:#16a34a;}
+    .btn-orange{background:#f97316;}
+    .btn-slate{background:#0f172a;}
+    .btn-yellow{background:#eab308;color:#0f172a;}
+    .btn-blue{background:#2563eb;color:#fff;border:1px solid #2563eb;}
+    .status-green{color:var(--success);font-weight:700;}
+    .status-orange{color:var(--warn);font-weight:700;}
+    .status-red{color:var(--danger);font-weight:700;}
+    .toolbar-wrap{position:sticky;top:0;z-index:50;background:var(--card);padding:12px 20px;border-bottom:1px solid #e5e7eb;}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .flex{display:flex;gap:10px;align-items:center;}
+    .muted{color:var(--muted);}
+    .view-select{width:200px !important;min-width:200px !important;max-width:200px !important;padding:8px 10px !important;font-size:14px;}
+    .planning-container{max-height:70vh;width:100%;overflow:auto;border:1px solid #e5e7eb;background:#fff;box-sizing:border-box;scrollbar-width: var(--scrollbar-size);}
+    .planning-container::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
+    .planning-container::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    .planning-container::-webkit-scrollbar-track{ background:#f8fafc; }
+    .planning-table{ border-collapse:collapse; width:max-content; min-width:200px; font-size:14px; }
+    .planning-table th, .planning-table td{box-sizing:border-box;padding:8px 6px;text-align:left;border:1px solid #eee;min-width:var(--planning-col-width);width:var(--planning-col-width);max-width:var(--planning-col-width);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#fff;}
+    .planning-table thead th{position:sticky; top:0; z-index:15;background:#f1f5f9;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,0.04);}
+    .planning-table th.col-emp, .planning-table td.col-emp{position:sticky; left:0; z-index:16; background:#fff; box-shadow:6px 0 8px rgba(0,0,0,0.04);}
+    .planning-table thead th.col-emp{ z-index:17; }
+    .planning-table tbody tr:nth-child(odd) td{background:var(--table-stripe,#fff);}
+    .planning-table tbody tr:nth-child(even) td{background:var(--table-hover,#eef2ff);}
+    .pill{background:linear-gradient(120deg,#2563eb,#38bdf8);color:#fff;border-radius:12px;padding:6px 8px;font-size:11px;font-weight:700;display:block;margin:4px 0;white-space:normal;word-break:break-word;}
+    .pill small{display:block;color:#e0f2fe;font-weight:600;font-size:10px;}
+    .pill-actions{display:inline-flex;gap:6px;margin-left:6px;font-size:12px;}
+    .drop-target{border:2px dashed #cbd5e1;min-height:40px;padding:4px;border-radius:6px;}
+    .drag-over{background:#e0f2fe;}
+    #historyPanel{position:fixed;left:0;right:0;bottom:60px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px 32px 24px 24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:2000;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;scrollbar-width: var(--scrollbar-size);}
+    #historyPanel::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
+    #historyPanel::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    #historyPanel::-webkit-scrollbar-track{ background:#f8fafc; }
+    #historyHeader{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    #historyFilters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    #historyFilters input[type="date"], #historyFilters select{padding:6px;border:1px solid #ddd;border-radius:6px;}
+    .h-scrollbar{position:sticky; top:0; z-index:5; height:16px; background:#f1f5f9;overflow-x:auto; overflow-y:hidden; scrollbar-gutter:stable both-edges; scrollbar-width: var(--scrollbar-size);}
+    .h-scrollbar::-webkit-scrollbar{ height:var(--scrollbar-size); }
+    .h-scrollbar::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    .h-scrollbar-inner{height:1px;}
+    .history-table-wrap{overflow:auto; max-height:calc(100vh - 220px); -webkit-overflow-scrolling:touch;overscroll-behavior:none; width:100%; transform:translateZ(0); margin-bottom:24px; scrollbar-width: var(--scrollbar-size);}
+    .history-table-wrap::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
+    .history-table-wrap::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    .history-table-wrap::-webkit-scrollbar-track{ background:#f8fafc; }
+    .history-table{min-width:100%;border-collapse:collapse;font-size:15px;width:auto;}
+    .history-table th,.history-table td{border:12px solid #eee;padding:14px;text-align:left;box-sizing:border-box;}
+    .history-table tbody tr:nth-child(odd){background:#ffffff;}
+    .history-table tbody tr:nth-child(even){background:#e0f2ff;}
+    .history-table th{background:#fbfbfb;position:sticky;top:0;z-index:10;}
+    .history-table th:nth-child(7),
+    .history-table td:nth-child(7) { min-width: 220px; max-width: 340px; }
+
+    .modal-backdrop{position:fixed; inset:0; display:none; align-items:flex-start; justify-content:center;background:rgba(0,0,0,0.35); z-index:2500; padding:16px; overflow:auto; -webkit-overflow-scrolling:touch;}
+    .modal{background:#fff; border-radius:12px; padding:20px;max-width:1100px; width:100%; max-height:90vh; overflow:auto; -webkit-overflow-scrolling:touch;box-shadow:0 24px 60px rgba(0,0,0,0.18);}
+    .modal header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;}
+    .modal table{width:100%;border-collapse:collapse;font-size:14px;}
+    .modal th,.modal td{border:1px solid #e5e7eb;padding:8px;text-align:left;}
+    .modal tbody tr:nth-child(odd){background:#f9fafb;}
+    .action-btn{padding:6px 10px;font-size:13px;border:none;border-radius:8px;cursor:pointer;}
+    .switch{position:relative;display:inline-block;width:52px;height:28px;}
+    .switch input{opacity:0;width:0;height:0;}
+    .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#cbd5e1;transition:.2s;border-radius:34px;}
+    .slider:before{position:absolute;content:"";height:22px;width:22px;left:3px;bottom:3px;background:white;transition:.2s;border-radius:50%;}
+    input:checked + .slider{background:#2563eb;}
+    input:checked + .slider:before{transform:translateX(24px);}
+    .today-col{background:#fff7d6 !important;}
+  </style>
+</head>
+
+<body>
+  <div class="grid">
+    <div class="card">
+      <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div style="text-align:center;">
+          <h2 style="margin-bottom:4px;">Administration</h2>
+          <div class="muted">Connecté : <b id="adminUser"></b></div>
+        </div>
+        <div class="flex" style="gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn-primary" onclick="openEmpModal()">Gestion des salariés</button>
+          <button class="btn-green" onclick="openCampModal()">Camping / Affaires</button>
+          <button class="btn-orange" onclick="afficherHistorique()">Historique</button>
+          <button class="btn-slate" onclick="ouvrirRecap()">Récap temps camping</button>
+          <button class="secondary" onclick="logout()">Déconnexion</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar-wrap">
+        <div class="toolbar">
+          <button class="secondary" onclick="shiftRange(-1)">&larr;</button>
+          <div id="weekLabel" class="pill" style="padding:6px 10px; display:inline-block; background:var(--primary-light); color:#1d4ed8; box-shadow:none;"></div>
+          <button class="secondary" onclick="shiftRange(1)">&rarr;</button>
+          <select id="viewMode" class="view-select" onchange="changeViewMode(this.value)">
+            <option value="week">1 semaine</option>
+            <option value="two">2 semaines</option>
+            <option value="month">1 mois</option>
+          </select>
+          <button class="btn-primary" onclick="openTaskModal()">Ajouter une tâche</button>
+          <button class="ghost" onclick="savePlanning()">Enregistrer le planning</button>
+          <button class="btn-primary" onclick="exportPlanningPDFLocal()">Exporter le planning en PDF</button>
+          <span id="planStatus" class="muted"></span>
+          <div class="flex" style="gap:6px;margin-left:8px;">
+            <span class="muted" style="font-size:13px;">Auto-save</span>
+            <label class="switch" title="Activer/désactiver la sauvegarde automatique">
+              <input type="checkbox" id="autoSaveToggle" checked onchange="toggleAutoSave(this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap" id="planningTableWrap"></div>
+    </div>
+  </div>
+
+  <!-- History side panel -->
+  <div id="historyPanel" aria-hidden="true">
+    <div id="historyHeader">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <strong id="historyTitle" style="font-size:18px;">Historique</strong>
+      </div>
+      <div class="flex" style="gap:8px;align-items:center;flex-wrap:wrap;">
+        <button id="btnPdf" class="ghost" style="padding:6px 10px;" onclick="telechargerPDF()">Exporter PDF</button>
+        <span id="statusPdf" class="muted"></span>
+        <button class="secondary" style="padding:6px 10px;" onclick="fermerHistorique()">Fermer</button>
+      </div>
+    </div>
+
+    <div id="historyFilters">
+      <label style="font-size:13px;">De: <input type="date" id="histDateFrom"></label>
+      <label style="font-size:13px;">À: <input type="date" id="histDateTo"></label>
+      <label style="font-size:13px;">Salarié: <select id="histSalarie"><option value="">Tous</option></select></label>
+      <label style="font-size:13px;">Camping: <select id="histCamping"><option value="">Tous</option></select></label>
+      <button class="btn-primary" onclick="applyHistoryFilters()" style="padding:6px 12px;">Appliquer</button>
+      <button class="secondary" onclick="resetHistoryFilters()" style="padding:6px 12px;">Réinitialiser</button>
+    </div>
+
+    <div id="historyContent"><div class="muted">Clique sur Appliquer pour afficher l'historique.</div></div>
+  </div>
+
+  <!-- Récap temps modal -->
+  <div id="recapModal" class="modal-backdrop" style="display:none">
+    <div class="modal" style="max-width:1100px;">
+      <header>
+        <h3>Récap temps (camping / affaire)</h3>
+        <div class="flex" style="gap:8px;">
+          <button class="action-btn btn-blue" onclick="exportRecapPDF()" action-pdf>Exporter PDF</button>
+          <button class="action-btn btn-orange" onclick="loadRecap()">Actualiser</button>
+          <button class="action-btn btn-green" onclick="closeRecap()">Fermer</button>
+        </div>
+      </header>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <label>De <input type="date" id="recapFrom"></label>
+        <label>À <input type="date" id="recapTo"></label>
+        <label>Camping <select id="recapCamp"><option value="">Tous</option></select></label>
+        <button class="action-btn btn-blue" onclick="onApplyRecapFilters()">Appliquer</button>
+      </div>
+
+      <div id="recapStatus" class="muted" style="margin-bottom:10px;">Choisissez des dates puis Actualiser.</div>
+      <div id="recapGrouped" class="muted">--</div>
+    </div>
+  </div>
+
+  <!-- Task modal -->
+  <div id="taskModal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+      <h3 id="modalTitle">Nouvelle tâche</h3>
+      <label>Salarié <select id="mSalarie"></select></label>
+      <div style="display:flex;gap:8px;">
+        <label style="flex:1">Début <input type="date" id="mDateStart"></label>
+        <label style="flex:1">Fin <input type="date" id="mDateEnd"></label>
+      </div>
+      <label>Camping <select id="mCamping"></select></label>
+      <label>Affaire <select id="mAffaire"></select></label>
+      <label>Commentaire <input type="text" id="mTache"></label>
+      <div style="display:flex;gap:8px;">
+        <label style="flex:1">Heure début <input type="time" id="mDebut"></label>
+        <label style="flex:1">Heure fin <input type="time" id="mFin"></label>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+        <button onclick="saveModal()">OK</button>
+        <button class="secondary" onclick="closeTaskModal()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employés modal -->
+  <div id="empModal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <header style="align-items:center;gap:10px;">
+        <h3>Employés</h3>
+        <div class="flex" style="gap:8px;flex-wrap:wrap;">
+          <button class="ghost action-btn" onclick="addEmpRow()">Ajouter une ligne</button>
+          <button class="ghost action-btn" onclick="refreshEmployes()">Rafraîchir</button>
+          <button class="secondary action-btn" onclick="closeEmpModal()">Fermer</button>
+        </div>
+      </header>
+      <div id="empList">Chargement...</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-primary" style="min-width:140px;" onclick="saveEmployes()">Sauvegarder</button>
+        <span id="empStatus" class="muted"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campings modal -->
+  <div id="campModal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <header style="align-items:center;gap:10px;flex-wrap:wrap;">
+        <h3>Campings / Affaires</h3>
+        <div class="flex" style="gap:8px;flex-wrap:wrap;">
+          <button class="ghost action-btn" onclick="addCampRow()">Ajouter une ligne</button>
+          <button class="ghost action-btn" onclick="refreshCampAff()">Rafraîchir</button>
+          <button class="ghost action-btn" onclick="importCampAff()">Importer Excel</button>
+          <button class="ghost action-btn" onclick="clearCampList()">Vider la liste</button>
+          <button class="btn-primary action-btn" onclick="saveCampAff()">Sauvegarder</button>
+          <button class="secondary action-btn" onclick="closeCampModal()">Fermer</button>
+        </div>
+        <span id="campImportStatus" class="muted"></span>
+      </header>
+      <div id="campList">Chargement...</div>
+      <input type="file" id="campFileInput" accept=".xls,.xlsx" style="display:none" />
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3000/api";
+    const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
+
+    let currentUser = '';
+    let employes = [];
+    let campAff = [];
+    let salariedNames = [];
+    let planning = [];
+    let anchorDate = startOfWeek(new Date());
+    let viewMode = 'week';
+    let editingIndex = null;
+    let cachedHistory = null;
+    let historyHeaderIndices = {};
+    let autoSaveTimer = null;
+    let autoSaveEnabled = true;
+    let recapGroupedData = [];
+
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'INDEX.html'; }
+
+    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+    function fmtDateDisplay(isoStr){ if(!isoStr) return ''; const p=isoStr.split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr; }
+    function fmtHHMM(v){ if(v==null) return ''; const s=String(v).trim(); const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/); if(m) return `${m[1].padStart(2,'0')}:${m[2]}`; return s; }
+    function startOfWeek(d){ const c=new Date(d); const day=c.getDay(); const diff=(day===0?-6:1-day); c.setDate(c.getDate()+diff); c.setHours(0,0,0,0); return c; }
+    function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
+    function addMonths(d,n){ const c=new Date(d); c.setMonth(c.getMonth()+n); c.setDate(1); c.setHours(0,0,0,0); return c; }
+    function hhmmToMinutes(hhmm){ if(!hhmm) return 0; const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})/); if(!m) return 0; return parseInt(m[1],10)*60 + parseInt(m[2],10); }
+    function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
+    function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
+
+    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
+    async function apiGet(path){ return fetchJSON(API_BASE+path); }
+    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
+
+    function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
+    function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
+
+    function openArchiveModal(){}
+    function closeArchiveModal(){}
+    function onClickExportArchive(btn){}
+    function onClickCleanApp(btn){}
+
+    async function initApp(){
+      const params = new URLSearchParams(window.location.search);
+      currentUser = params.get('u') || '';
+      if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
+      document.getElementById('adminUser').textContent = currentUser || '(?)';
+      try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
+      const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
+
+      const {start,end,label} = getRange();
+      const wl = document.getElementById('weekLabel'); if (wl) wl.textContent = label;
+
+      const fi = document.getElementById('campFileInput');
+      if (fi) fi.addEventListener('change', onCampFileSelected);
+
+      await Promise.all([loadCampAff(), loadEmployees(), loadPlanningRange(start,end)]);
+      populateHistoryFiltersFromLocal();
+      fillRecapSelectors();
+      renderPlanning(start,end);
+      loadHistory();
+    }
+    window.onload = initApp;
+
+    function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
+    function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
+    function getRange(){
+      if(viewMode==='week'){ const s=startOfWeek(anchorDate); const e=addDays(s,6); return {start:s,end:e,label:fmtDateLocal(s)+' → '+fmtDateLocal(e)}; }
+      else if(viewMode==='two'){ const s=startOfWeek(anchorDate); const e=addDays(s,13); return {start:s,end:e,label:fmtDateLocal(s)+' → '+fmtDateLocal(e)}; }
+      else { const s=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1); const e=new Date(anchorDate.getFullYear(),anchorDate.getMonth()+1,0); const lbl=s.toLocaleString('fr-FR',{month:'long',year:'numeric'}); return {start:s,end: e, label: lbl.charAt(0).toUpperCase()+lbl.slice(1)}; }
+    }
+    async function loadRangePlanning(){
+      const {start,end,label} = getRange();
+      const wl=document.getElementById('weekLabel'); if(wl) wl.textContent=label;
+      await loadPlanningRange(start,end);
+      renderPlanning(start,end);
+    }
+
+    async function loadEmployees(){
+      try{
+        employes = await apiGet("/getEmployes");
+        salariedNames = (employes||[]).filter(e => (e.role||'user').toLowerCase() === 'user').map(e => e.nom);
+      }catch(e){ console.error(e); employes=[]; salariedNames=[]; }
+    }
+    function openEmpModal(){ renderEmpList(); const m = document.getElementById('empModal'); if(m){ m.style.display='flex'; m.setAttribute('aria-hidden','false'); } }
+    function closeEmpModal(){ const m = document.getElementById('empModal'); if(m){ m.style.display='none'; m.setAttribute('aria-hidden','true'); } }
+    function addEmpRow(){ employes.push({nom:'', email:'', matricule:'', role:'user', password:''}); renderEmpList(); }
+    function renderEmpList(){
+      const box = document.getElementById('empList');
+      if(!box) return;
+      if(!employes || employes.length===0){ box.innerHTML='<div class="muted">Aucun salarié.</div>'; return; }
+      let html = '<table><thead><tr><th>Nom</th><th>Email</th><th>Matricule</th><th>Rôle</th><th>Mot de passe</th></tr></thead><tbody>';
+      employes.forEach((e,i)=>{
+        html += `<tr>
+          <td><input value="${escapeHtml(e.nom||'')}" oninput="employes[${i}].nom=this.value"></td>
+          <td><input value="${escapeHtml(e.email||'')}" oninput="employes[${i}].email=this.value"></td>
+          <td><input value="${escapeHtml(e.matricule||'')}" oninput="employes[${i}].matricule=this.value"></td>
+          <td>
+            <select oninput="employes[${i}].role=this.value">
+              <option value="user" ${((e.role||'user')==='user')?'selected':''}>user</option>
+              <option value="admin" ${((e.role||'user')==='admin')?'selected':''}>admin</option>
+              <option value="compta" ${((e.role||'user')==='compta')?'selected':''}>compta</option>
+            </select>
+          </td>
+          <td><input type="text" value="${escapeHtml(e.password||'')}" oninput="employes[${i}].password=this.value"></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      box.innerHTML = html;
+    }
+    async function saveEmployes(){
+      const status = document.getElementById('empStatus');
+      if(status){ status.textContent='Enregistrement...'; }
+      try{
+        await apiPost("/saveEmployes", employes);
+        if(status){ status.textContent='OK'; }
+        toast("Employés enregistrés");
+      }catch(e){
+        console.error(e);
+        if(status){ status.textContent='Erreur'; }
+        toast("Erreur sauvegarde employés", false);
+      }
+    }
+    async function refreshEmployes(){ await loadEmployees(); renderEmpList(); }
+
+    async function loadCampAff(){
+      try{
+        campAff = await apiGet("/getCampingsEtAffaires");
+      }catch(e){ console.error(e); campAff=[]; }
+    }
+    function openCampModal(){ renderCampList(); const m = document.getElementById('campModal'); if(m){ m.style.display='flex'; m.setAttribute('aria-hidden','false'); } }
+    function closeCampModal(){ const m = document.getElementById('campModal'); if(m){ m.style.display='none'; m.setAttribute('aria-hidden','true'); } }
+    function addCampRow(){ campAff.push({camping:'', affaire:''}); renderCampList(); }
+    function clearCampList(){
+      campAff = [];
+      renderCampList();
+      const status = document.getElementById('campImportStatus');
+      if(status){ status.textContent = 'Liste vidée'; status.className = 'status-orange'; }
+    }
+    function renderCampList(){
+      const box = document.getElementById('campList');
+      if(!box) return;
+      if(!campAff || campAff.length===0){ box.innerHTML='<div class="muted">Aucun camping / affaire.</div>'; return; }
+      let html = '<table><thead><tr><th>Camping</th><th>Affaire</th></tr></thead><tbody>';
+      campAff.forEach((e,i)=>{
+        html += `<tr>
+          <td><input value="${escapeHtml(e.camping||'')}" oninput="campAff[${i}].camping=this.value"></td>
+          <td><input value="${escapeHtml(e.affaire||'')}" oninput="campAff[${i}].affaire=this.value"></td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      box.innerHTML = html;
+    }
+    async function saveCampAff(){
+      const status = document.getElementById('campImportStatus');
+      if(status){ status.textContent='Enregistrement...'; }
+      try{
+        await apiPost("/saveCampingsEtAffaires", campAff);
+        if(status){ status.textContent='Sauvegardé'; }
+        toast("Campings/Affaires enregistrés");
+      }catch(e){
+        console.error(e);
+        if(status){ status.textContent='Erreur'; }
+        toast("Erreur sauvegarde camp/aff", false);
+      }
+    }
+    async function refreshCampAff(){ await loadCampAff(); renderCampList(); }
+    function importCampAff(){
+      const status = document.getElementById('campImportStatus');
+      if(status){ status.textContent = 'Importation en cours...'; status.className = 'status-orange'; }
+      const fi = document.getElementById('campFileInput');
+      if(fi) fi.click();
+    }
+    function onCampFileSelected(evt){
+      const file = evt.target.files && evt.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(e){
+        const arrayBuffer = e.target.result;
+        const b64 = arrayBufferToBase64(arrayBuffer);
+        const status = document.getElementById('campImportStatus');
+        try{
+          await apiPost("/importCampAffLocal", { b64, filename: file.name });
+          await refreshCampAff();
+          if(status){ status.textContent = 'Importé'; status.className = 'status-green'; }
+        }catch(err){
+          console.error(err);
+          if(status){ status.textContent = 'Erreur import'; status.className = 'status-red'; }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      evt.target.value = '';
+    }
+
+    async function loadPlanningRange(start,end){
+      try{
+        planning = await apiPost("/getPlanning", { startIso: fmtDateLocal(start), endIso: fmtDateLocal(end) });
+      }catch(e){
+        console.error(e);
+        planning = [];
+      }
+    }
+    function fillModalSalaries(){
+      const sel = document.getElementById('mSalarie'); if(!sel) return;
+      sel.innerHTML = '<option value="">--</option>';
+      salariedNames.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
+    }
+    function fillCampAffModal(){
+      const s = document.getElementById('mCamping'); if(!s) return;
+      s.innerHTML = '<option value="">--</option>';
+      const uniq = [...new Set((campAff||[]).map(o=>o.camping))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      uniq.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; s.appendChild(o); });
+      s.onchange = function(){
+        const affaireSel = document.getElementById('mAffaire');
+        affaireSel.innerHTML = '<option value="">--</option>';
+        (campAff||[])
+          .filter(o=>o.camping===s.value)
+          .sort((a,b)=>a.affaire.localeCompare(b.affaire,'fr',{sensitivity:'base'}))
+          .forEach(o=>{ const op=document.createElement('option'); op.value=o.affaire; op.textContent=o.affaire; affaireSel.appendChild(op); });
+      };
+    }
+    function openTaskModal(){ editingIndex = null; fillModalSalaries(); fillCampAffModal(); const modal=document.getElementById('taskModal'); if(modal){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); } }
+    function closeTaskModal(){ const modal=document.getElementById('taskModal'); if(modal){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); } }
+    function saveModal(){
+      const sel=document.getElementById('mSalarie'); if(!sel) { closeTaskModal(); return; }
+      const salarie=sel.value; const dStart=document.getElementById('mDateStart').value; const dEnd=document.getElementById('mDateEnd').value;
+      if(!salarie||!dStart||!dEnd){ alert('Salarié, début et fin requis'); return; }
+      const start=new Date(dStart+'T00:00:00'), end=new Date(dEnd+'T00:00:00'); if(end<start){ alert('Date de fin avant date de début'); return; }
+      const camp=document.getElementById('mCamping').value, aff=document.getElementById('mAffaire').value, comment=document.getElementById('mTache').value||'', debut=document.getElementById('mDebut').value||'', fin=document.getElementById('mFin').value||'';
+      const matricule=(employes.find(e=>e.nom===salarie)||{}).matricule||'';
+      if(editingIndex!=null){ planning[editingIndex]={ date: fmtDateLocal(start), salarie, matricule, camping:camp, affaire:aff, tache:comment, debut, fin, commentaire:'' }; }
+      else { let cursor=new Date(start); while(cursor<=end){ planning.push({ date: fmtDateLocal(cursor), salarie, matricule, camping:camp, affaire:aff, tache:comment, debut, fin, commentaire:'' }); cursor=addDays(cursor,1); } }
+      closeTaskModal(); const {start:startR,end:endR}=getRange(); renderPlanning(startR,endR); if(autoSaveEnabled) triggerAutoSave('modal');
+    }
+    function editTask(emp,dateStr,indexInPlanning){
+      editingIndex = indexInPlanning; const t = planning[indexInPlanning]; fillModalSalaries(); fillCampAffModal();
+      document.getElementById('mSalarie').value = t.salarie || emp;
+      document.getElementById('mDateStart').value = t.date || dateStr;
+      document.getElementById('mDateEnd').value = t.date || dateStr;
+      document.getElementById('mCamping').value = t.camping || '';
+      const affSel=document.getElementById('mAffaire');
+      affSel.innerHTML = '<option value="">--</option>';
+      (campAff||[]).filter(o=>o.camping===t.camping).sort((a,b)=>a.affaire.localeCompare(b.affaire,'fr',{sensitivity:'base'})).forEach(o=>{ const op=document.createElement('option'); op.value=o.affaire; op.textContent=o.affaire; affSel.appendChild(op); });
+      affSel.value = t.affaire || '';
+      document.getElementById('mTache').value = t.tache || '';
+      document.getElementById('mDebut').value = t.debut || '';
+      document.getElementById('mFin').value = t.fin || '';
+      const modal=document.getElementById('taskModal'); if(modal){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); }
+    }
+    function renderPlanning(start,end){
+      const wrap = document.getElementById('planningTableWrap');
+      let prevScrollLeft = 0, prevScrollTop = 0;
+      const prevContainer = wrap.querySelector('.planning-container');
+      if (prevContainer) { prevScrollLeft = prevContainer.scrollLeft; prevScrollTop = prevContainer.scrollTop; }
+
+      const days = []; let d=new Date(start);
+      while(d<=end){ days.push(new Date(d)); d = addDays(d,1); }
+      const todayIso = fmtDateLocal(new Date());
+
+      const uniqEmp = salariedNames.slice();
+
+      const headerCells = ['<th class="col-emp">Salarié</th>'].concat(days.map(day=>{
+        const isToday = fmtDateLocal(day) === todayIso;
+        const label = day.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});
+        return `<th class="col-day ${isToday?'today-col':''}">${escapeHtml(label)}</th>`;
+      })).join('');
+
+      const bodyRows = uniqEmp.map(emp=>{
+        const cells = ['<th class="col-emp">'+escapeHtml(emp)+'</th>'].concat(days.map(day=>{
+          const dateStr = fmtDateLocal(day);
+          const isToday = dateStr === todayIso;
+          const cellTasks = planning.filter(p=>p.salarie===emp && p.date===dateStr);
+          const tasksHtml = cellTasks.map(t=>{
+            const idx = planning.indexOf(t);
+            return `<div class="pill" draggable="true" ondragstart="onDragStart(event,${idx})"><small>${escapeHtml(t.camping||'')} / ${escapeHtml(t.affaire||'')}</small>${escapeHtml(t.tache||'')} (${escapeHtml(t.debut||'')}-${escapeHtml(t.fin||'')})<span class="pill-actions"><a href="#" onclick="editTask('${escapeHtml(emp)}','${escapeHtml(t.date)}',${idx});return false;">✎</a><a href="#" onclick="deleteTask(${idx});return false;">🗑</a></span></div>`;
+          }).join('');
+          return `<td class="col-day ${isToday?'today-col':''}"><div class="drop-target" data-emp="${escapeHtml(emp)}" data-date="${dateStr}" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">${tasksHtml || '<span class="muted">Glissez une tâche ici</span>'}</div></td>`;
+        }));
+        return '<tr>'+cells.join('')+'</tr>';
+      }).join('');
+
+      wrap.innerHTML = `
+        <div class="planning-container">
+          <table class="planning-table">
+            <thead><tr>${headerCells}</tr></thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>
+      `;
+      const newContainer = wrap.querySelector('.planning-container');
+      if (newContainer) { newContainer.scrollLeft = prevScrollLeft; newContainer.scrollTop = prevScrollTop; }
+    }
+    function onDragStart(evt, idx){ try{ evt.dataTransfer.setData('text/plain', String(idx)); evt.dataTransfer.effectAllowed = 'copy'; }catch(e){} }
+    function onDragOver(evt){ evt.preventDefault(); evt.currentTarget.classList.add('drag-over'); }
+    function onDragLeave(evt){ evt.currentTarget.classList.remove('drag-over'); }
+    function onDrop(evt){
+      evt.preventDefault();
+      const idx = parseInt(evt.dataTransfer.getData('text/plain'),10);
+      const target = evt.currentTarget;
+      const emp = target.getAttribute('data-emp');
+      const date = target.getAttribute('data-date');
+      target.classList.remove('drag-over');
+      if (isNaN(idx) || !planning[idx]) return;
+      const base = planning[idx];
+      const exists = planning.find(p=>p.salarie===emp && p.date===date && p.camping===base.camping && p.affaire===base.affaire && p.tache===base.tache && p.debut===base.debut && p.fin===base.fin);
+      if(!exists) planning.push({...base, salarie: emp, date});
+      const {start,end} = getRange(); renderPlanning(start,end); if(autoSaveEnabled) triggerAutoSave('drop');
+    }
+    function deleteTask(idx){
+      if(idx==null || planning[idx]==null) return;
+      planning.splice(idx,1);
+      const {start,end} = getRange(); renderPlanning(start,end); if(autoSaveEnabled) triggerAutoSave('delete');
+    }
+    function triggerAutoSave(reason){
+      if(!autoSaveEnabled) return;
+      const ps = document.getElementById('planStatus');
+      if(ps) ps.textContent = 'Auto: sauvegarde...';
+      if(autoSaveTimer) clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(()=>savePlanning(true), 1500);
+    }
+    async function savePlanning(isAuto=false){
+      const ps = document.getElementById('planStatus');
+      if(ps && !isAuto) ps.textContent = 'Enregistrement...';
+      const payload = planning.map(p=>({...p}));
+      try{
+        await apiPost("/savePlanning", payload);
+        if(ps) ps.textContent = isAuto ? 'Auto OK' : 'OK';
+        if(!isAuto) toast("Planning sauvegardé");
+      }catch(e){
+        if(ps) ps.textContent = 'Erreur';
+        console.error('savePlanning error', e);
+        toast("Erreur sauvegarde planning", false);
+      }
+    }
+    function toggleAutoSave(enabled){
+      autoSaveEnabled = !!enabled;
+      try { localStorage.setItem('autoSavePlanning', String(autoSaveEnabled)); } catch(e){}
+      const ps = document.getElementById('planStatus');
+      if (ps) ps.textContent = autoSaveEnabled ? 'Auto-save ON' : 'Auto-save OFF';
+      if (!autoSaveEnabled && autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+    }
+
+    function populateHistoryFiltersFromLocal(){
+      const salSelect = document.getElementById('histSalarie');
+      const campSelect = document.getElementById('histCamping');
+      if(!salSelect || !campSelect) return;
+      salSelect.innerHTML = '<option value="">Tous</option>';
+      (salariedNames||[]).slice().sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{
+        const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o);
+      });
+      campSelect.innerHTML = '<option value="">Tous</option>';
+      const camps = [...new Set((campAff||[]).map(c=>c.camping))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); });
+    }
+    function setDefaultHistoryToday(){
+      const today = new Date().toISOString().slice(0,10);
+      const df = document.getElementById('histDateFrom');
+      const dt = document.getElementById('histDateTo');
+      if (df) df.value = today;
+      if (dt) dt.value = today;
+    }
+    async function applyHistoryFilters(){
+      const prevSel = { sal: document.getElementById('histSalarie').value || '', camp: document.getElementById('histCamping').value || '' };
+      const df = document.getElementById('histDateFrom').value || '';
+      const dt = document.getElementById('histDateTo').value || '';
+      const sal = prevSel.sal;
+      const camp = prevSel.camp;
+      const content=document.getElementById('historyContent'); if(content) content.innerHTML='<div class="muted">Chargement...</div>';
+      try{
+        cachedHistory = await apiPost("/getHistoriquePointagesFiltered", { dateFrom: df, dateTo: dt, salarie: sal, camping: camp });
+        populateHistoryFilterOptions(prevSel);
+        renderHistory(filterCachedHistory());
+      }catch(e){
+        cachedHistory=null;
+        renderHistory([]);
+        alert('Erreur chargement historique');
+      }
+    }
+    function populateHistoryFilterOptions(prevSel){
+      if(!cachedHistory || cachedHistory.length<2) return;
+      const header = cachedHistory[0].map(h=> (h||'').toString().toLowerCase());
+      historyHeaderIndices = { date: header.findIndex(h=>h.includes('date')), nom: header.findIndex(h=>h.includes('nom')), camping: header.findIndex(h=>h.includes('camping')) };
+      const salSelect = document.getElementById('histSalarie'); const campSelect = document.getElementById('histCamping');
+      if(!salSelect || !campSelect) return;
+      const names = new Set(salariedNames || []);
+      const camps = new Set();
+      for(let i=1;i<cachedHistory.length;i++){
+        const row = cachedHistory[i];
+        if(historyHeaderIndices.nom>=0) names.add((row[historyHeaderIndices.nom]||'').toString().trim());
+        if(historyHeaderIndices.camping>=0) camps.add((row[historyHeaderIndices.camping]||'').toString().trim());
+      }
+      salSelect.innerHTML = '<option value="">Tous</option>';
+      Array.from(names).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); });
+      campSelect.innerHTML = '<option value="">Tous</option>';
+      Array.from(camps).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); });
+      if (prevSel){
+        if (prevSel.sal) salSelect.value = prevSel.sal;
+        if (prevSel.camp) campSelect.value = prevSel.camp;
+      }
+    }
+    function filterCachedHistory(){
+      if(!cachedHistory) return [];
+      const rows = cachedHistory.slice(1); const header = cachedHistory[0];
+      const fromVal = document.getElementById('histDateFrom').value; const toVal = document.getElementById('histDateTo').value; const sal = document.getElementById('histSalarie').value; const camp = document.getElementById('histCamping').value;
+      const dateFrom = fromVal ? new Date(fromVal+'T00:00:00') : null; const dateTo = toVal ? new Date(toVal+'T23:59:59') : null;
+      const idxDate = historyHeaderIndices.date, idxNom = historyHeaderIndices.nom, idxCamp = historyHeaderIndices.camping;
+      const filtered = rows.filter(r=>{
+        let ok = true;
+        if(idxDate>=0 && (dateFrom || dateTo)){
+          const cellDate = parseCellDate(r[idxDate]); if(!cellDate) return false;
+          if(dateFrom && cellDate < dateFrom) ok = false;
+          if(dateTo && cellDate > dateTo) ok = false;
+        }
+        if(idxNom>=0 && sal){
+          const cellNom = (r[idxNom]||'').toString().trim().toLowerCase();
+          if(cellNom !== sal.toString().trim().toLowerCase()) ok = false;
+        }
+        if(idxCamp>=0 && camp){
+          const cellCamp = (r[idxCamp]||'').toString().trim().toLowerCase();
+          if(cellCamp !== camp.toString().trim().toLowerCase()) ok = false;
+        }
+        return ok;
+      });
+      return [header].concat(filtered);
+    }
+    function parseCellDate(s){
+      if(!s) return null; s = s.toString().trim();
+      const iso = /^\d{4}-\d{2}-\d{2}$/; const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+      if(iso.test(s)) return new Date(s+'T00:00:00');
+      const m=s.match(dmy); if(m) return new Date(m[3]+'-'+m[2]+'-'+m[1]+'T00:00:00');
+      const pd=new Date(s); return isNaN(pd.getTime())?null:pd;
+    }
+    function renderHistory(data){
+      const content=document.getElementById('historyContent');
+      if(!data||data.length===0){ content.innerHTML='<div>Aucun historique.</div>'; return; }
+
+      const header=data[0];
+      const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
+      const visibleHeader = hasRowIdx ? header.slice(0,-1) : header;
+
+      let html='<div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>';
+      html+='<div class="history-table-wrap"><table class="history-table"><thead><tr>';
+      visibleHeader.forEach(h=>html+='<th>'+escapeHtml(h||'')+'</th>');
+      html+='<th>Actions</th></tr></thead><tbody>';
+
+      for(let i=1;i<data.length;i++){
+        const row = data[i];
+        const rowIndex = hasRowIdx ? row[row.length-1] : '';
+        const cells = hasRowIdx ? row.slice(0,-1) : row;
+        html+='<tr data-row-index="'+escapeHtml(rowIndex)+'">';
+        cells.forEach((c, idx)=>{
+          const colName = (visibleHeader[idx]||'').toLowerCase();
+          const dataCol = (colName.includes('date')?'date':
+                           colName.includes('camping')?'camping':
+                           colName.includes('affaire')?'affaire':
+                           colName.includes('début')||colName.includes('debut')?'debut':
+                           colName.includes('pause')?'pause':
+                           colName.includes('reprise')?'reprise':
+                           colName.includes('fin')?'fin':'');
+          const iso = dataCol==='date' ? toIsoDate(c||'') : '';
+          html += `<td ${dataCol?`data-col="${dataCol}"`:''} data-raw="${escapeHtml(c||'')}" ${iso?`data-iso="${escapeHtml(iso)}"`:''}>${escapeHtml(fmtHHMM(c)||'')}</td>`;
+        });
+        html += `<td>
+          <button class="ghost action-btn" onclick="startEditHistoryRow(this)">✎</button>
+          <button class="ghost action-btn" onclick="deleteHistoryRow(this)">🗑</button>
+        </td>`;
+      }
+      html+='</tbody></table><div style="height:40px;"></div></div>';
+      content.innerHTML=html;
+
+      const wrap = content.querySelector('.history-table-wrap'); const hsb = content.querySelector('.h-scrollbar'); const hsbInner = content.querySelector('.h-scrollbar-inner');
+      if(wrap && hsb && hsbInner){ hsbInner.style.width = wrap.scrollWidth + 'px'; hsb.scrollLeft = wrap.scrollLeft; hsb.addEventListener('scroll', ()=>{ wrap.scrollLeft = hsb.scrollLeft; }); wrap.addEventListener('scroll', ()=>{ hsb.scrollLeft = wrap.scrollLeft; }); }
+    }
+    function toIsoDate(str){
+      if(!str) return '';
+      const s = String(str).trim();
+      const iso = /^\d{4}-\d{2}-\d{2}$/;
+      const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+      if (iso.test(s)) return s;
+      const m = s.match(dmy);
+      if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+      const d = new Date(s);
+      if (!isNaN(d)) {
+        const y=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+        return `${y}-${mm}-${dd}`;
+      }
+      return '';
+    }
+    function startEditHistoryRow(btn){
+      const tr = btn.closest('tr'); if(!tr) return;
+      tr.dataset.editing = "1";
+      const cells = Array.from(tr.children);
+      const dateCell   = cells[0];
+      const debutCell  = cells[7];
+      const pauseCell  = cells[8];
+      const repriseCell= cells[9];
+      const finCell    = cells[10];
+      const campCell   = cells[4];
+      const affCell    = cells[5];
+
+      const dateVal = toIsoDate(dateCell.dataset.raw || dateCell.textContent.trim());
+      const debVal  = debutCell.textContent.trim();
+      const pauseVal= pauseCell.textContent.trim();
+      const repVal  = repriseCell.textContent.trim();
+      const finVal  = finCell.textContent.trim();
+      const campVal = campCell.textContent.trim();
+      const affVal  = affCell.textContent.trim();
+
+      dateCell.innerHTML   = `<input type="date" value="${dateVal || ''}">`;
+      debutCell.innerHTML  = `<input type="time" value="${debVal || ''}">`;
+      pauseCell.innerHTML  = `<input type="time" value="${pauseVal || ''}">`;
+      repriseCell.innerHTML= `<input type="time" value="${repVal || ''}">`;
+      finCell.innerHTML    = `<input type="time" value="${finVal || ''}">`;
+      campCell.innerHTML   = ''; const campSel = buildCampingSelect(campVal); campCell.appendChild(campSel);
+      affCell.innerHTML    = ''; const affSel  = buildAffaireSelect(campVal, affVal); affCell.appendChild(affSel);
+
+      btn.textContent = '💾'; btn.onclick = () => saveHistoryRow(btn);
+      const cancel = document.createElement('button');
+      cancel.className = 'secondary'; cancel.textContent = 'Annuler';
+      cancel.onclick = () => { applyHistoryFilters(); };
+      btn.parentElement.appendChild(cancel);
+    }
+    async function saveHistoryRow(btn){
+      const tr = btn.closest('tr'); if(!tr) return;
+      const rowIndex = tr.dataset.rowIndex;
+      if (!rowIndex) { alert("Index de ligne manquant"); return; }
+
+      const tds = Array.from(tr.children);
+      const val = {
+        date:    tds[0].querySelector('input[type="date"]')?.value || '',
+        debut:   tds[7].querySelector('input[type="time"]')?.value || '',
+        pause:   tds[8].querySelector('input[type="time"]')?.value || '',
+        reprise: tds[9].querySelector('input[type="time"]')?.value || '',
+        fin:     tds[10].querySelector('input[type="time"]')?.value || '',
+        camping: tds[4].querySelector('select')?.value || '',
+        affaire: tds[5].querySelector('select[data-kind="affaire"]')?.value || '',
+        commentaire: tds[6]?.textContent?.trim() || tds[6].querySelector('input')?.value || ''
+      };
+
+      btn.disabled = true; btn.textContent = '...';
+      try{
+        await apiPost("/updateHistoriquePointage",{ rowIndex: Number(rowIndex), payload: val });
+        applyHistoryFilters();
+      }catch(e){
+        alert("Erreur: " + e);
+        btn.disabled = false; btn.textContent = '💾';
+      }
+    }
+    async function deleteHistoryRow(btn){
+      const tr = btn.closest('tr');
+      if(!tr) return;
+      const rowIndex = tr.dataset.rowIndex;
+      if(!rowIndex){ alert("Index de ligne manquant"); return; }
+      if(!confirm("Supprimer cette ligne ?")) return;
+
+      btn.disabled = true; btn.textContent = '...';
+      try{
+        await apiPost("/deleteHistoriquePointage",{ rowIndex: Number(rowIndex) });
+        applyHistoryFilters();
+      }catch(e){
+        alert("Erreur: " + e);
+        btn.disabled = false; btn.textContent = '🗑';
+      }
+    }
+    function buildCampingSelect(current){
+      const curr = (current || '').trim();
+      const sel = document.createElement('select');
+      sel.innerHTML = '<option value="">--</option>';
+      const camps = [...new Set((campAff||[]).map(c=>String(c.camping||'').trim()))]
+        .filter(Boolean)
+        .sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      camps.forEach(c=>{
+        const o=document.createElement('option'); o.value=c; o.textContent=c;
+        if (c === curr) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange = function(){
+        const affSel = this.parentElement.querySelector('select[data-kind="affaire"]');
+        if (affSel) fillAffaireSelect(affSel, this.value, '');
+      };
+      return sel;
+    }
+    function fillAffaireSelect(sel, camping, currentAff){
+      const campKey = (camping || '').trim().toLowerCase();
+      const curAff  = (currentAff || '').trim();
+      sel.innerHTML = '<option value="">--</option>';
+      const filtered = campKey
+        ? (campAff||[]).filter(o => String(o.camping||'').trim().toLowerCase() === campKey)
+        : (campAff||[]);
+      const affaires = [...new Set(filtered.map(o=>String(o.affaire||'').trim()))]
+        .filter(Boolean)
+        .sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      affaires.forEach(a=>{
+        const op=document.createElement('option'); op.value=a; op.textContent=a;
+        if (a === curAff) op.selected = true;
+        sel.appendChild(op);
+      });
+    }
+    function buildAffaireSelect(camping, currentAff){
+      const sel = document.createElement('select');
+      sel.dataset.kind = "affaire";
+      fillAffaireSelect(sel, camping, currentAff);
+      return sel;
+    }
+
+    function fillRecapSelectors(){
+      const campSel = document.getElementById('recapCamp');
+      if(campSel){
+        const camps = [...new Set((campAff||[]).map(c=>c.camping))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+        campSel.innerHTML = '<option value="">Tous</option>';
+        camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; campSel.appendChild(o); });
+      }
+    }
+    function setDefaultRecapDates(){
+      const today = new Date();
+      const iso = d => d.toISOString().slice(0,10);
+      const df = document.getElementById('recapFrom');
+      const dt = document.getElementById('recapTo');
+      if (df) df.value = iso(today);
+      if (dt) dt.value = iso(today);
+    }
+    function onApplyRecapFilters() {
+      const st = document.getElementById('recapStatus');
+      if (st) st.textContent = 'Chargement...';
+      loadRecap();
+    }
+    async function loadRecap(){
+      const status = document.getElementById('recapStatus');
+      if(status) status.textContent = 'Chargement...';
+      try{
+        cachedHistory = await apiPost("/getHistoriquePointagesFiltered",{ dateFrom:'', dateTo:'', salarie:'', camping:'' });
+        computeRecap();
+      }catch(err){
+        if(status) status.textContent = 'Erreur chargement historique';
+        console.error(err);
+      }
+    }
+    function computeRecap(){
+      const status = document.getElementById('recapStatus');
+      recapGroupedData = [];
+      if(!cachedHistory || cachedHistory.length < 2){
+        if(status) status.textContent = 'Aucune donnée.';
+        renderRecapTables();
+        return;
+      }
+      const header = cachedHistory[0].map(h=> (h||'').toString().toLowerCase());
+      const idxDate = header.findIndex(h=>h.includes('date'));
+      const idxCamp = header.findIndex(h=>h.includes('camping'));
+      const idxAff = header.findIndex(h=>h.includes('affaire'));
+      const idxDebut = header.findIndex(h=>h.includes('début') || h.includes('debut'));
+      const idxFin = header.findIndex(h=>h.includes('fin'));
+      const idxPause = header.findIndex(h=>h.includes('pause'));
+      const idxReprise = header.findIndex(h=>h.includes('reprise'));
+
+      const df = document.getElementById('recapFrom')?.value || '';
+      const dt = document.getElementById('recapTo')?.value || '';
+      const campFilter = document.getElementById('recapCamp')?.value || '';
+      const dateFrom = df ? new Date(df+'T00:00:00') : null;
+      const dateTo = dt ? new Date(dt+'T23:59:59') : null;
+
+      const byCamp = new Map();
+      const rows = cachedHistory.slice(1);
+
+      rows.forEach(r=>{
+        const cellDate = idxDate>=0 ? parseCellDate(r[idxDate]) : null;
+        if(dateFrom && (!cellDate || cellDate < dateFrom)) return;
+        if(dateTo && (!cellDate || cellDate > dateTo)) return;
+
+        const campRaw = idxCamp>=0 ? (r[idxCamp]||'').toString().trim() : '';
+        if(!campRaw) return;
+        const camp = campRaw;
+
+        if(campFilter && camp.toLowerCase() !== campFilter.toLowerCase()) return;
+
+        const aff = idxAff>=0 ? (r[idxAff]||'').toString().trim() : '(sans affaire)';
+        const debut = idxDebut>=0 ? r[idxDebut] : '';
+        const fin = idxFin>=0 ? r[idxFin] : '';
+        const pause = idxPause>=0 ? r[idxPause] : '';
+        const reprise = idxReprise>=0 ? r[idxReprise] : '';
+
+        const startMin = hhmmToMinutes(debut);
+        const endMin = hhmmToMinutes(fin);
+        if(!startMin && !endMin) return;
+        let dur = Math.max(0, endMin - startMin);
+
+        const pauseMin = hhmmToMinutes(pause);
+        const repriseMin = hhmmToMinutes(reprise);
+        if(repriseMin && pauseMin && repriseMin > pauseMin){
+          dur -= Math.max(0, repriseMin - pauseMin);
+        }
+
+        if(!byCamp.has(camp)) byCamp.set(camp, new Map());
+        const mapAff = byCamp.get(camp);
+        mapAff.set(aff, (mapAff.get(aff)||0) + dur);
+      });
+
+      recapGroupedData = Array.from(byCamp.entries()).map(([camp,mapAff])=>{
+        const affaires = Array.from(mapAff.entries())
+          .map(([aff,minutes])=>({affaire: aff, minutes}))
+          .sort((a,b)=>a.affaire.localeCompare(b.affaire,'fr',{sensitivity:'base'}));
+        const total = affaires.reduce((s,r)=>s+r.minutes,0);
+        return { camping: camp, affaires, totalMinutes: total };
+      }).sort((a,b)=>a.camping.localeCompare(b.camping,'fr',{sensitivity:'base'}));
+
+      const totalAll = recapGroupedData.reduce((s,c)=>s+c.totalMinutes,0);
+      if(status) status.textContent = 'Total: ' + minutesToHHMM(totalAll);
+      renderRecapTables();
+    }
+    function renderRecapTables(){
+      const box = document.getElementById('recapGrouped');
+      if(!box) return;
+      if(!recapGroupedData.length){
+        box.innerHTML = '<div class="muted">Aucune donnée.</div>';
+        return;
+      }
+      let html = '';
+      recapGroupedData.forEach(group=>{
+        html += `<div style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:10px;padding:10px;">
+          <div style="font-weight:700;margin-bottom:8px;">${escapeHtml(group.camping)} — Total: ${minutesToHHMM(group.totalMinutes)}</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr><th style="text-align:left;padding:6px;border:1px solid #e5e7eb;">Affaire</th><th style="text-align:right;padding:6px;border:1px solid #e5e7eb;">Durée (h)</th></tr></thead>
+            <tbody>`;
+        group.affaires.forEach(a=>{
+          html += `<tr><td style="padding:6px;border:1px solid #e5e7eb;">${escapeHtml(a.affaire)}</td><td style="padding:6px;border:1px solid #e5e7eb;text-align:right;">${minutesToHHMM(a.minutes)}</td></tr>`;
+        });
+        html += `<tr><th style="padding:6px;border:1px solid #e5e7eb;text-align:right;">Total ${escapeHtml(group.camping)}</th><th style="padding:6px;border:1px solid #e5e7eb;text-align:right;">${minutesToHHMM(group.totalMinutes)}</th></tr>`;
+        html += `</tbody></table></div>`;
+      });
+      const totalAll = recapGroupedData.reduce((s,c)=>s+c.totalMinutes,0);
+      html += `<div style="font-weight:700;margin-top:8px;">TOTAL GLOBAL : ${minutesToHHMM(totalAll)}</div>`;
+      box.innerHTML = html;
+    }
+    async function exportRecapPDF(){
+      const btn = document.querySelector('#recapModal button[action-pdf]') || null;
+      if(btn) btn.disabled = true;
+      const df = document.getElementById('recapFrom')?.value || '';
+      const dt = document.getElementById('recapTo')?.value || '';
+      const camp = document.getElementById('recapCamp')?.value || '';
+
+      try{
+        await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
+        await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p','pt','a4');
+        const genDate = new Date();
+        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
+
+        const periodText = (df||dt)
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` : 'Période : toutes dates';
+        const campText = 'Camping : ' + (camp||'Tous');
+
+        doc.setFontSize(14);
+        doc.text('Récap temps', 20, 24);
+        doc.setFontSize(11);
+        doc.text(periodText, 20, 42);
+        doc.text('Salarié : Tous', 20, 58);
+        doc.text(campText, 20, 74);
+        doc.text(genText, 20, 90);
+
+        let currentY = 110;
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+
+        recapGroupedData.forEach((group)=>{
+          const estimatedRows = group.affaires.length + 2;
+          const estimatedHeight = 14 + estimatedRows * 18 + 12;
+          if (currentY + estimatedHeight > pageHeight - 40) {
+            doc.addPage();
+            currentY = 40;
+          }
+
+          doc.setFontSize(12);
+          doc.text(`Camping : ${group.camping} — Total : ${minutesToHHMM(group.totalMinutes)}`, margin, currentY);
+          currentY += 6;
+
+          const head = [['Affaire','Durée (h)']];
+          const body = group.affaires.map(a=>[a.affaire, minutesToHHMM(a.minutes)]);
+          body.push([`Total ${group.camping}`, minutesToHHMM(group.totalMinutes)]);
+
+          doc.autoTable({
+            startY: currentY + 6,
+            head,
+            body,
+            styles:{ fontSize:9, cellPadding:4 },
+            headStyles:{ fillColor:[37,99,235], textColor:255 },
+            alternateRowStyles:{ fillColor:[240,245,255] },
+            margin:{ left:margin, right:margin, top:0, bottom:16 },
+            columnStyles:{ 0:{cellWidth:320}, 1:{cellWidth:80, halign:'right'} }
+          });
+
+          currentY = doc.lastAutoTable.finalY + 32;
+        });
+
+        const totalAll = recapGroupedData.reduce((s,c)=>s+c.totalMinutes,0);
+        if(totalAll>0){
+          if (currentY + 40 > pageHeight - 20) { doc.addPage(); currentY = 40; }
+          doc.setFontSize(13);
+          doc.text('TOTAL GLOBAL : ' + minutesToHHMM(totalAll), margin, currentY);
+        }
+
+        doc.save('recap-temps.pdf');
+      }catch(e){
+        alert(e && e.message ? e.message : e);
+      }finally{
+        if(btn) btn.disabled = false;
+      }
+    }
+    async function loadScriptOnce(src,label){
+      return new Promise((resolve,reject)=>{
+        const existing = document.querySelector(`script[data-src="${src}"]`);
+        if (existing) {
+          existing.addEventListener('load', () => resolve());
+          existing.addEventListener('error', () => reject(new Error('Échec chargement '+src)));
+          return;
+        }
+        const s=document.createElement('script'); s.src=src; s.async=true; s.defer=true; s.dataset.src=src;
+        s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Échec chargement '+src));
+        document.head.appendChild(s);
+      });
+    }
+
+    function afficherHistorique(){
+      const meta=document.querySelector('meta[name="viewport"]'); if(meta) meta.setAttribute('content','width=device-width, initial-scale=1, user-scalable=yes');
+      const panel=document.getElementById('historyPanel'); panel.style.display='block'; panel.setAttribute('aria-hidden','false');
+      setDefaultHistoryToday();
+      populateHistoryFiltersFromLocal();
+      document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
+      applyHistoryFilters();
+    }
+    function fermerHistorique(){
+      const meta=document.querySelector('meta[name="viewport"]'); if(meta) meta.setAttribute('content','width=device-width, initial-scale=1, user-scalable=no');
+      const panel=document.getElementById('historyPanel'); panel.style.display='none'; panel.setAttribute('aria-hidden','true');
+    }
+
+    async function telechargerPDF() {
+      const btn = document.getElementById('btnPdf');
+      const status = document.getElementById('statusPdf');
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = "Génération en cours...";
+
+      try {
+        const data = filterCachedHistory();
+        if (!data || data.length <= 1) throw new Error("Aucune donnée à exporter. Clique Appliquer d'abord.");
+
+        const header = data[0];
+        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
+        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
+        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
+
+        await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
+        await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l','pt','a4');
+
+        const df   = document.getElementById('histDateFrom').value || '';
+        const dt   = document.getElementById('histDateTo').value   || '';
+        const sal  = document.getElementById('histSalarie').value  || '';
+        const campSel = document.getElementById('histCamping').value  || '';
+        const periodText = (df||dt)
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` : 'Période : toutes dates';
+        const salText = 'Salarié : ' + (sal||'Tous');
+        const campText = 'Camping : ' + (campSel||'Tous');
+        const genDate = new Date();
+        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
+
+        doc.setFontSize(14);
+        doc.text('Rapport Pointages', 16, 24);
+        doc.setFontSize(11);
+        doc.text(periodText, 16, 42);
+        doc.text(salText, 16, 58);
+        doc.text(campText, 16, 74);
+        doc.text(genText, 16, 90);
+
+        doc.autoTable({
+          head: [headForPdf.map(h=>h||'')],
+          body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
+          styles:{ fontSize:8, cellPadding:4 },
+          headStyles:{ fillColor:[37,99,235], textColor:255 },
+          alternateRowStyles:{ fillColor:[240,245,255] },
+          margin:{ top:110, bottom:24, left:16, right:16 }
+        });
+
+        doc.save('historique_pointages.pdf');
+      } catch(e) {
+        alert(e && e.message ? e.message : e);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (status) status.textContent = "";
+      }
+    }
+
+    (function immediateDefaults(){
+      const t=new Date().toISOString().slice(0,10);
+      const df=document.getElementById('histDateFrom'); const dt=document.getElementById('histDateTo');
+      if(df) df.value=t; if(dt) dt.value=t;
+      const rf=document.getElementById('recapFrom'); const rt=document.getElementById('recapTo');
+      if(rf) rf.value=t; if(rt) rt.value=t;
+    })();
+
+    window.exportPlanningPDFLocal = exportPlanningPDFLocal;
+    window.openEmpModal = openEmpModal;
+    window.openCampModal = openCampModal;
+    window.closeEmpModal = closeEmpModal;
+    window.closeCampModal = closeCampModal;
+    window.addEmpRow = addEmpRow;
+    window.addCampRow = addCampRow;
+    window.importCampAff = importCampAff;
+    window.refreshEmployes = refreshEmployes;
+    window.refreshCampAff = refreshCampAff;
+    window.saveEmployes = saveEmployes;
+    window.saveCampAff = saveCampAff;
+    window.clearCampList = clearCampList;
+    window.openTaskModal = openTaskModal;
+    window.savePlanning = savePlanning;
+    window.toggleAutoSave = toggleAutoSave;
+    window.deleteTask = deleteTask;
+    window.editTask = editTask;
+    window.shiftRange = shiftRange;
+    window.changeViewMode = changeViewMode;
+    window.ouvrirRecap = function(){ const m=document.getElementById('recapModal'); if(m){ m.style.display='flex'; m.setAttribute('aria-hidden','false'); } setDefaultRecapDates(); fillRecapSelectors(); loadRecap(); };
+    window.closeRecap = function(){ const m=document.getElementById('recapModal'); if(m){ m.style.display='none'; m.setAttribute('aria-hidden','true'); } };
+    window.onApplyRecapFilters = onApplyRecapFilters;
+    window.afficherHistorique = afficherHistorique;
+    window.fermerHistorique = fermerHistorique;
+    window.applyHistoryFilters = applyHistoryFilters;
+    window.resetHistoryFilters = function(){ setDefaultHistoryToday(); document.getElementById('histSalarie').value=''; document.getElementById('histCamping').value=''; renderHistory([]); document.getElementById('historyContent').innerHTML='<div class="muted">Clique sur Appliquer pour afficher l\'historique.</div>'; };
+    window.startEditHistoryRow = startEditHistoryRow;
+    window.deleteHistoryRow = deleteHistoryRow;
+    window.telechargerPDF = telechargerPDF;
+    window.logout = logout;
+
+    async function exportPlanningPDFLocal() {
+      const table = document.querySelector('#planningTableWrap table');
+      if (!table) { alert("Planning introuvable."); return; }
+
+      const btn = document.querySelector('button[onclick="exportPlanningPDFLocal()"]');
+      const status = document.getElementById('planStatus');
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = "Génération PDF planning...";
+
+      try {
+        await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
+        await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+        const {start, end, label} = getRange();
+        const days = [];
+        let d = new Date(start);
+        while(d <= end){ days.push(new Date(d)); d = addDays(d,1); }
+
+        const weeks = [];
+        let cursor = 0;
+        while(cursor < days.length){
+          const ws = startOfWeek(days[cursor]);
+          const we = addDays(ws, 6);
+          const slice = days.filter(x => x >= ws && x <= we);
+          weeks.push({
+            label: fmtDateDisplay(fmtDateLocal(slice[0])) + " → " + fmtDateDisplay(fmtDateLocal(slice[slice.length-1])),
+            days: slice
+          });
+          cursor += slice.length;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'pt', 'a4');
+
+        const genDate = new Date();
+        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
+
+        const employeesForPdf = salariedNames.length
+          ? salariedNames.slice()
+          : Array.from(new Set((planning||[]).map(p=>p.salarie).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+
+        weeks.forEach((week, idx) => {
+          if (idx > 0) doc.addPage();
+          let startY = 24;
+
+          const labelClean = (label || '').replace(/→/g,'au').replace(/…/g,'...');
+          const weekLabelClean = (week.label || '').replace(/→/g,'au').replace(/…/g,'...');
+
+          doc.setFontSize(14);
+          doc.text('Planning équipe', 16, startY);
+          doc.setFontSize(11);
+          doc.text(label ? ('Période affichée : ' + labelClean) : 'Période : --', 16, startY + 16);
+          doc.text(genText, 16, startY + 32);
+          doc.text(`Semaine ${idx+1} : ${weekLabelClean}`, 16, startY + 48);
+
+          const head = [['Salarié'].concat(week.days.map(day => day.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'})))];
+
+          const body = employeesForPdf.map(emp => {
+            const row = [emp];
+            week.days.forEach(day => {
+              const dateStr = fmtDateLocal(day);
+              const cellTasks = (planning||[]).filter(p => p.salarie === emp && p.date === dateStr);
+              if (!cellTasks.length) { row.push(''); return; }
+              const txt = cellTasks.map(t => {
+                const camp = t.camping||'';
+                const aff  = t.affaire||'';
+                const task = t.tache||'';
+                const hours = (t.debut||'')+(t.debut||t.fin?' - ':'')+(t.fin||'');
+                return `${camp}/${aff} ${task} ${hours}`.trim();
+              }).join('\n');
+              row.push(txt);
+            });
+            return row;
+          });
+
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const margin = 16;
+          const firstColWidth = 90;
+          const dayColWidth = Math.max(60, (pageWidth - 2*margin - firstColWidth) / week.days.length);
+
+          const columnStyles = { 0: {cellWidth: firstColWidth, fontStyle: 'bold'} };
+          for (let c = 1; c <= week.days.length; c++) { columnStyles[c] = {cellWidth: dayColWidth}; }
+
+          doc.autoTable({
+            startY: startY + 58,
+            head,
+            body,
+            styles: { fontSize: 7, cellPadding: 3, overflow: 'linebreak' },
+            headStyles: { fillColor: [37, 99, 235], textColor: 255 },
+            alternateRowStyles: { fillColor: [240, 245, 255] },
+            margin: { left: margin, right: margin, top: 0, bottom: 16 },
+            columnStyles
+          });
+        });
+
+        doc.save('planning.pdf');
+      } catch (e) {
+        console.error(e);
+        alert("Erreur lors de la génération du PDF planning : " + (e.message || e));
+      } finally {
+        if (btn) btn.disabled = false;
+        if (status) status.textContent = "";
+      }
+    }
+  </script>
+</body>
+</html>

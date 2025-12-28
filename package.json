@@ -1,0 +1,20 @@
+{
+  "name": "planning-pointage",
+  "version": "1.0.0",
+  "main": "server.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.6.0",
+    "body-parser": "^2.2.1",
+    "cors": "^2.8.5",
+    "express": "^4.22.1",
+    "xlsx": "^0.18.5"
+  },
+  "keywords": [],
+  "author": "",
+  "description": ""
+}

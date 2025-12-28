@@ -1,0 +1,1319 @@
+// === Constantes ===
+var SS_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+var FEUILLE_DONNEES_USER = "DONNEES_USER"; // A: nom, B: email, C: mot de passe, D: role, E: matricule
+var FEUILLE_DONNEES_CAMP = "DONNEES_CAMP"; // A: camping, B: affaire
+var FEUILLE_POINTAGES = "Pointages";
+var RECAP_OUT_SHEET = "RECAP_CAMPING";
+var SRC_SHEET_ALIASES = [FEUILLE_POINTAGES, "Pointages", "Pointage"];
+var FEUILLE_PLANNING = "Planning";
+var FEUILLE_PAYE_VALIDATION = "PAYES_VALIDATION"; // A: Date, B: Salarié, ...
+
+// === WebApp ===
+function doGet(e) {
+  var page = (e && e.parameter && e.parameter.page) || 'index';
+  var tplName = page === 'salarie' ? 'Salarie'
+              : page === 'admin' ? 'Admin'
+              : page === 'validation' ? 'Validation'
+              : 'Index';
+  return HtmlService.createTemplateFromFile(tplName)
+    .evaluate()
+    .setTitle("Pointage")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+function ping() { return 'pong'; }
+function testPing() { return 'pong'; }
+function getLogoUrlDirect() {
+  return "https://www.pcelec.fr/wp-content/uploads/2020/01/pc-elec-sans-ombre.png";
+}
+
+// === Helpers temps ===
+function parseTimeToMinutes(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  if (typeof value === "number" && !isNaN(value)) {
+    if (value <= 24) return Math.round(value * 60);
+    return Math.round(value);
+  }
+  if (value instanceof Date) return value.getHours() * 60 + value.getMinutes();
+  var s = String(value).trim();
+  var m = s.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
+  if (m) {
+    var h = parseInt(m[1], 10), mm = parseInt(m[2], 10);
+    if (!isNaN(h) && !isNaN(mm)) return h * 60 + mm;
+  }
+  m = s.match(/^(\d{1,2})[.,](\d+)$/);
+  if (m) {
+    var h2 = parseInt(m[1], 10);
+    var dec = parseFloat("0." + m[2]);
+    if (!isNaN(h2) && !isNaN(dec)) return Math.round((h2 + dec) * 60);
+  }
+  var n = parseFloat(s.replace(',', '.'));
+  if (!isNaN(n)) {
+    if (n <= 24) return Math.round(n * 60);
+    return Math.round(n);
+  }
+  return null;
+}
+function minutesToHHMM(totalMinutes) {
+  if (totalMinutes == null || isNaN(totalMinutes)) return "00:00";
+  var mins = Math.max(0, Math.round(totalMinutes));
+  var hours = Math.floor(mins / 60);
+  var minutes = mins % 60;
+  return String(hours) + ":" + (minutes < 10 ? "0" + minutes : String(minutes));
+}
+function parseCellDate(s){
+  if(!s) return null; s = s.toString().trim();
+  var iso = /^\d{4}-\d{2}-\d{2}$/; var dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  if(iso.test(s)) return new Date(s+'T00:00:00');
+  var m=s.match(dmy); if(m) return new Date(m[3]+'-'+m[2]+'-'+m[1]+'T00:00:00');
+  var pd=new Date(s); return isNaN(pd.getTime())?null:pd;
+}
+
+// === Auth / listes ===
+function checkLogin(login, password) {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+    if (!sh) return false;
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return false;
+    var data = sh.getRange(2, 1, lastRow - 1, 3).getDisplayValues();
+    for (var i = 0; i < data.length; i++) {
+      var nom = String(data[i][0] || '').trim();
+      var pwd = String(data[i][2] || '').trim();
+      if (nom === login && pwd === password) return true;
+    }
+    return false;
+  } catch (err) {
+    Logger.log('checkLogin erreur: %s', err.toString());
+    return false;
+  }
+}
+function getRoleForLogin(login) {
+  try {
+    if (!login) return 'user';
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+    if (!sh) return 'user';
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return 'user';
+    var data = sh.getRange(2, 1, lastRow - 1, 4).getDisplayValues();
+    var target = String(login).trim().toLowerCase();
+    for (var i = 0; i < data.length; i++) {
+      var nom = String(data[i][0] || '').trim().toLowerCase();
+      if (nom === target) {
+        var role = String(data[i][3] || '').trim().toLowerCase();
+        if (role === 'admin' || role === 'administrateur') return 'admin';
+        if (role === 'compta') return 'compta';
+        return 'user';
+      }
+    }
+    return 'user';
+  } catch (e) {
+    Logger.log('getRoleForLogin error: ' + e.toString());
+    return 'user';
+  }
+}
+function getIdentifiants() {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+    if (!sh) return [];
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return [];
+    var raw = sh.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+    var cleaned = raw.map(function(r){ return String(r[0] || '').trim(); }).filter(function(v){return v;});
+    return Array.from(new Set(cleaned)).sort(function(a,b){return a.localeCompare(b,'fr',{sensitivity:'base'});});
+  } catch (err) {
+    Logger.log('getIdentifiants erreur: %s', err.toString());
+    return [];
+  }
+}
+function getCampingsEtAffaires() {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_CAMP);
+    if (!sh) return [];
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return [];
+    var data = sh.getRange(2, 1, lastRow - 1, 2).getDisplayValues();
+    return data
+      .filter(function(r){ return String(r[0] || '').trim(); })
+      .map(function(r){ return { camping: String(r[0] || '').trim(), affaire: String(r[1] || '').trim() }; });
+  } catch (err) {
+    Logger.log('getCampingsEtAffaires erreur: %s', err.toString());
+    return [];
+  }
+}
+function getMatricules() {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+    if (!sh) return [];
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return [];
+    var raw = sh.getRange(2, 5, lastRow - 1, 1).getDisplayValues();
+    var cleaned = raw.map(function(r){ return String(r[0] || '').trim(); }).filter(function(v){return v;});
+    return Array.from(new Set(cleaned)).sort(function(a,b){return a.localeCompare(b,'fr',{sensitivity:'base'});});
+  } catch (err) {
+    Logger.log('getMatricules erreur: %s', err.toString());
+    return [];
+  }
+}
+function findMatriculeForEmployee(name) {
+  if (!name) return '';
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+  if (!sh) return '';
+  var lastRow = sh.getLastRow();
+  if (lastRow < 2) return '';
+  var data = sh.getRange(2, 1, lastRow - 1, 5).getDisplayValues();
+  var target = String(name).trim().toLowerCase();
+  for (var i = 0; i < data.length; i++) {
+    var nom = (data[i][0] || '').toString().trim().toLowerCase();
+    var matricule = (data[i][4] || '').toString().trim();
+    if (nom === target) return matricule;
+  }
+  return '';
+}
+function getMatriculeForName(name) {
+  try {
+    return findMatriculeForEmployee(name);
+  } catch (e) {
+    Logger.log('getMatriculeForName error: ' + e.toString());
+    return '';
+  }
+}
+function getEmployes() {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+    if (!sh) return [];
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return [];
+    var data = sh.getRange(2, 1, lastRow - 1, 5).getDisplayValues();
+    return data.map(function(r){
+      return {
+        nom: String(r[0] || '').trim(),
+        email: String(r[1] || '').trim(),
+        password: String(r[2] || '').trim(),
+        role: String(r[3] || '').trim() || 'user',
+        matricule: String(r[4] || '').trim()
+      };
+    }).filter(function(e){ return e.nom; });
+  } catch (e) {
+    Logger.log('getEmployes erreur: %s', e.toString());
+    return [];
+  }
+}
+
+// === Sauvegardes listes ===
+function saveEmployes(list) {
+  if (!Array.isArray(list)) throw new Error("liste invalide");
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+  if (!sh) sh = ss.insertSheet(FEUILLE_DONNEES_USER);
+
+  var header = ["Identifiant", "Email", "Mot de passe", "Role", "Matricule"];
+  var rows = (list || []).map(function(e){
+    return [e.nom || '', e.email || '', e.password || '', e.role || 'user', e.matricule || ''];
+  });
+
+  sh.clearContents();
+  if (header.length) sh.getRange(1,1,1,header.length).setValues([header]);
+  if (rows.length) sh.getRange(2,1,rows.length,header.length).setValues(rows);
+  return rows.length;
+}
+function saveCampingsEtAffaires(list) {
+  if (!Array.isArray(list)) throw new Error("liste invalide");
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_DONNEES_CAMP);
+  if (!sh) sh = ss.insertSheet(FEUILLE_DONNEES_CAMP);
+
+  var header = ["Camping", "Affaire"];
+  var rows = (list || []).map(function(e){
+    return [e.camping || '', e.affaire || ''];
+  });
+
+  sh.clearContents();
+  if (header.length) sh.getRange(1,1,1,header.length).setValues([header]);
+  if (rows.length)   sh.getRange(2,1,rows.length,header.length).setValues(rows);
+  return rows.length;
+}
+
+// === Import camp/affaires ===
+function importCampAffFromFile(fileId) {
+  if (!fileId) throw new Error("fileId manquant");
+  var blob = DriveApp.getFileById(fileId).getBlob();
+  return _importCampAffFromBlob_(blob);
+}
+function importCampAffFromLocal(b64, filename) {
+  if (!b64) throw new Error("contenu vide");
+  var blob = Utilities.newBlob(Utilities.base64Decode(b64), MimeType.MICROSOFT_EXCEL, filename || "import.xlsx");
+  return _importCampAffFromBlob_(blob);
+}
+function _importCampAffFromBlob_(blob) {
+  if (!(typeof Drive !== 'undefined' && Drive.Files)) {
+    throw new Error("Active le service avancé Drive (Resources/Services Google avancés > Drive API) puis redeploie.");
+  }
+  var temp = DriveApp.createFile(blob);
+  var convId = null;
+  try {
+    var copy = Drive.Files.copy({title: temp.getName(), mimeType: MimeType.GOOGLE_SHEETS}, temp.getId(), {convert:true});
+    convId = copy.id;
+    var ssImport = SpreadsheetApp.openById(convId);
+    var sheet = ssImport.getSheets()[0];
+    var data = sheet.getDataRange().getDisplayValues();
+    if (!data || data.length < 2) return 0;
+
+    var rows = [];
+    for (var i = 1; i < data.length; i++) {
+      var r = data[i];
+      var camping = (r[5] || "").toString().trim();
+      var affA = (r[0] || "").toString().trim();
+      var affC = (r[2] || "").toString().trim();
+      var affaire = (affA || affC) ? (affA + ":" + affC) : "";
+      if (!camping && !affaire) continue;
+      rows.push([camping, affaire]);
+    }
+
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_DONNEES_CAMP);
+    if (!sh) sh = ss.insertSheet(FEUILLE_DONNEES_CAMP);
+    var header = ["Camping", "Affaire"];
+    sh.clearContents();
+    sh.getRange(1, 1, 1, 2).setValues([header]);
+    if (rows.length) sh.getRange(2, 1, rows.length, 2).setValues(rows);
+    return rows.length;
+  } finally {
+    try { if (convId) DriveApp.getFileById(convId).setTrashed(true); } catch(e){}
+    try { temp.setTrashed(true); } catch(e){}
+  }
+}
+
+// === Planning ===
+function ensurePlanningSheet_() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_PLANNING);
+  if (!sh) {
+    sh = ss.insertSheet(FEUILLE_PLANNING);
+    sh.appendRow(["Date", "Salarie", "Matricule", "Camping", "Affaire", "Tache", "Debut", "Fin", "Commentaire"]);
+  }
+  return sh;
+}
+function getPlanning(startIso, endIso) {
+  var sh = ensurePlanningSheet_();
+  var data = sh.getDataRange().getDisplayValues();
+  if (!data || data.length <= 1) return [];
+  var out = [];
+  var start = new Date(startIso);
+  var end = new Date(endIso);
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var d = new Date(r[0]);
+    if (isNaN(d)) continue;
+    if (d >= start && d <= end) {
+      out.push({
+        date: Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+        salarie: String(r[1] || ''),
+        matricule: String(r[2] || ''),
+        camping: String(r[3] || ''),
+        affaire: String(r[4] || ''),
+        tache: String(r[5] || ''),
+        debut: String(r[6] || ''),
+        fin: String(r[7] || ''),
+        commentaire: String(r[8] || '')
+      });
+    }
+  }
+  return out;
+}
+function savePlanning(entries) {
+  if (!Array.isArray(entries)) throw new Error("entries invalide");
+  var sh = ensurePlanningSheet_();
+  sh.clearContents();
+  var header = ["Date", "Salarie", "Matricule", "Camping", "Affaire", "Tache", "Debut", "Fin", "Commentaire"];
+  sh.getRange(1,1,1,header.length).setValues([header]);
+  if (!entries.length) return 0;
+  var rows = entries.map(function(e){
+    return [
+      e.date || '',
+      e.salarie || '',
+      e.matricule || '',
+      e.camping || '',
+      e.affaire || '',
+      e.tache || '',
+      e.debut || '',
+      e.fin || '',
+      e.commentaire || ''
+    ];
+  });
+  sh.getRange(2,1,rows.length,header.length).setValues(rows);
+  return rows.length;
+}
+
+// === Historique & export PDF pointages ===
+function getHistoriquePointages() {
+  try {
+    var ss = SpreadsheetApp.openById(SS_ID);
+    var sh = ss.getSheetByName(FEUILLE_POINTAGES);
+    if (!sh) return [];
+    return sh.getDataRange().getDisplayValues();
+  } catch (err) {
+    Logger.log('getHistoriquePointages erreur: %s', err.toString());
+    return [];
+  }
+}
+function exportHistoriquePDFLocal(dateFrom, dateTo, salarie, camping) {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_POINTAGES);
+  if (!sh) throw new Error("Feuille Pointages introuvable.");
+
+  var dFrom = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+  var dTo   = dateTo   ? new Date(dateTo   + "T23:59:59") : null;
+
+  var rng  = sh.getDataRange();
+  var raw  = rng.getValues();
+  var disp = rng.getDisplayValues();
+  if (!raw || raw.length < 2) throw new Error("Aucune donnée à exporter.");
+
+  var out = [];
+  out.push(disp[0]);
+  for (var i = 1; i < raw.length; i++) {
+    var rDate = raw[i][0];
+    var dCell = null;
+    if (rDate instanceof Date && !isNaN(rDate)) {
+      dCell = new Date(rDate.getFullYear(), rDate.getMonth(), rDate.getDate());
+    }
+    var nomCell  = (disp[i][2] || '').toString().trim();
+    var campCell = (disp[i][4] || '').toString().trim();
+
+    var keep = true;
+    if (dFrom || dTo) {
+      if (!dCell) keep = false;
+      else {
+        if (dFrom && dCell < dFrom) keep = false;
+        if (dTo && dCell > dTo) keep = false;
+      }
+    }
+    if (keep && salarie && nomCell !== salarie) keep = false;
+    if (keep && camping && campCell !== camping) keep = false;
+    if (keep) out.push(disp[i]);
+  }
+  if (out.length <= 1) throw new Error("Aucune ligne ne correspond aux filtres.");
+
+  var tempName = "TMP_EXPORT_POINTAGES_" + Date.now();
+  var temp = ss.insertSheet(tempName);
+  try {
+    var cols = out[0].length;
+    for (var c = 1; c <= cols; c++) temp.setColumnWidth(c, sh.getColumnWidth(c));
+    temp.getRange(1, 1, 1, cols).mergeAcross()
+        .setValue("PCELEC – Historique des pointages")
+        .setFontSize(14)
+        .setFontWeight("bold")
+        .setHorizontalAlignment("left");
+    temp.getRange(2, 1, out.length, cols).setValues(out);
+    temp.getRange(2, 1, 1, cols)
+        .setBackground("#e2e8f0")
+        .setFontWeight("bold");
+    SpreadsheetApp.flush();
+
+    var params = [
+      "format=pdf",
+      "gid=" + temp.getSheetId(),
+      "size=A3",
+      "portrait=false",
+      "fitw=true",
+      "sheetnames=false",
+      "printtitle=false",
+      "pagenumbers=false",
+      "gridlines=true",
+      "fzr=false",
+      "top_margin=0.5",
+      "bottom_margin=0.5",
+      "left_margin=0.5",
+      "right_margin=0.5"
+    ];
+    var url = "https://docs.google.com/spreadsheets/d/" + SS_ID + "/export?" + params.join("&");
+    var token = ScriptApp.getOAuthToken();
+    var resp = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    var blob = resp.getBlob().setName("historique_pointages.pdf");
+
+    return {
+      base64: Utilities.base64Encode(blob.getBytes()),
+      mimeType: blob.getContentType(),
+      name: blob.getName()
+    };
+  } finally {
+    try { ss.deleteSheet(temp); } catch (e) {}
+  }
+}
+
+// === Helpers divers ===
+function _parseDateDisplay_(v) { return _parseDateDisplay(v); }
+function escapeHtml_(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+function _parseDateDisplay(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  if (v instanceof Date) return new Date(v.getFullYear(), v.getMonth(), v.getDate());
+  var s = String(v).trim();
+  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    var d = parseInt(m[1], 10), mo = parseInt(m[2], 10) - 1, y = parseInt(m[3], 10);
+    var dd = new Date(y, mo, d);
+    if (!isNaN(dd.getTime())) return new Date(dd.getFullYear(), dd.getMonth(), dd.getDate());
+  }
+  var maybe = new Date(s);
+  if (!isNaN(maybe.getTime())) return new Date(maybe.getFullYear(), maybe.getMonth(), maybe.getDate());
+  return null;
+}
+
+// === Pointage V2 (enregistrement) ===
+function computeDurationMinutes(debutStr, finStr, pauseStr, repriseStr) {
+  var toMin = parseTimeToMinutes;
+  var debut = toMin(debutStr);
+  var fin = toMin(finStr);
+  if (debut == null || fin == null) return 0;
+  if (fin <= debut) fin += 24 * 60;
+  var dur = fin - debut;
+  if (pauseStr !== undefined && repriseStr !== undefined && pauseStr !== '' && repriseStr !== '') {
+    var pause = toMin(pauseStr), reprise = toMin(repriseStr);
+    if (pause != null && reprise != null) {
+      if (reprise <= pause) reprise += 24 * 60;
+      if (reprise > pause) dur -= Math.max(0, reprise - pause);
+    }
+  }
+  return Math.max(0, dur);
+}
+function enregistrerPointageV2(payload) {
+  if (!payload) throw new Error("Payload vide.");
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_POINTAGES);
+  if (!sh) throw new Error("Feuille Pointages introuvable.");
+
+  var tz = ss.getSpreadsheetTimeZone();
+  var now = new Date();
+  var dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var dateStr = Utilities.formatDate(dateOnly, tz, "dd/MM/yyyy");
+
+  var name = payload.nom || '';
+  var matricule = findMatriculeForEmployee(name) || '';
+
+  var rows = [];
+  var numericOps = [];
+
+  function pushRow(rowArray, timeDays, travelDays) {
+    rows.push(rowArray);
+    numericOps.push({ timeDays: timeDays, travelDays: travelDays });
+  }
+
+  if (Array.isArray(payload.entries)) {
+    for (var i = 0; i < payload.entries.length; i++) {
+      var e = payload.entries[i] || {};
+      if (e.type === 'chantier') {
+        var minutes = computeDurationMinutes(e.heureDebut, e.heureFin, e.heurePause, e.heureReprise);
+        var totalStr = minutesToHHMM(minutes);
+        var row = [
+          dateStr,
+          payload.typePersonne || '',
+          name,
+          'TRAVAIL',
+          e.camping || '',
+          e.affaire || '',
+          e.commentaire || '',
+          e.heureDebut || '',
+          e.heurePause || '',
+          e.heureReprise || '',
+          e.heureFin || '',
+          totalStr,
+          '',
+          matricule || ''
+        ];
+        pushRow(row, minutes / 1440, null);
+      } else if (e.type === 'deplacement') {
+        var minutes2 = computeDurationMinutes(e.heureDebut, e.heureFin, null, null);
+        var totalStr2 = minutesToHHMM(minutes2);
+        if (e.dtype === 'travail') {
+          var row2 = [
+            dateStr, payload.typePersonne || '', name, 'DEPL TRAVAIL',
+            '', '', e.commentaire || '',
+            e.heureDebut || '', '', '', e.heureFin || '',
+            totalStr2, '', matricule || ''
+          ];
+          pushRow(row2, minutes2 / 1440, null);
+        } else {
+          var row3 = [
+            dateStr, payload.typePersonne || '', name, 'DEPL DOMICILE',
+            '', '', e.commentaire || '',
+            e.heureDebut || '', '', '', e.heureFin || '',
+            '', totalStr2, matricule || ''
+          ];
+          pushRow(row3, null, minutes2 / 1440);
+        }
+      }
+    }
+  }
+
+  if (rows.length === 0) return 0;
+
+  var startRow = sh.getLastRow() + 1;
+  sh.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+
+  for (var j = 0; j < numericOps.length; j++) {
+    var rIndex = startRow + j;
+    var op = numericOps[j];
+    try {
+      if (op.timeDays != null) sh.getRange(rIndex, 12).setValue(op.timeDays).setNumberFormat('[h]:mm');
+      if (op.travelDays != null) sh.getRange(rIndex, 13).setValue(op.travelDays).setNumberFormat('[h]:mm');
+    } catch (e) {
+      try {
+        if (op.timeDays != null) sh.getRange(rIndex, 12).setValue(minutesToHHMM(op.timeDays * 1440));
+        if (op.travelDays != null) sh.getRange(rIndex, 13).setValue(minutesToHHMM(op.travelDays * 1440));
+      } catch (e2) {}
+    }
+  }
+
+  try {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    try {
+      if (typeof generateRecapCampingKeepFormatting === 'function') generateRecapCampingKeepFormatting();
+      else if (typeof generateRecapCamping === 'function') generateRecapCamping();
+    } finally {
+      try { lock.releaseLock(); } catch (e) {}
+    }
+  } catch (err) {
+    Logger.log('Erreur génération RECAP après enregistrementV2: ' + String(err));
+  }
+
+  return rows.length;
+}
+
+// === Recap Camping ===
+function _findPointagesSheet() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  for (var i = 0; i < SRC_SHEET_ALIASES.length; i++) {
+    var s = ss.getSheetByName(SRC_SHEET_ALIASES[i]);
+    if (s) return s;
+  }
+  return null;
+}
+function getPlanningForUser(loginOrMatricule, startIso, endIso) {
+  var all = getPlanning(startIso, endIso);
+  if (!loginOrMatricule) return [];
+  var key = String(loginOrMatricule).trim().toLowerCase();
+  return all.filter(function(r){
+    var nom = (r.salarie || '').toString().trim().toLowerCase();
+    var mat = (r.matricule || '').toString().trim().toLowerCase();
+    return nom === key || (mat && mat === key);
+  });
+}
+function generateRecapCampingKeepFormatting() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var src = _findPointagesSheet();
+  if (!src) {
+    var outShNF = ss.getSheetByName(RECAP_OUT_SHEET);
+    if (!outShNF) outShNF = ss.insertSheet(RECAP_OUT_SHEET);
+    outShNF.clear();
+    outShNF.getRange(1, 1).setValue('Feuille source Pointages introuvable. Vérifie le nom.');
+    return RECAP_OUT_SHEET;
+  }
+
+  var data = src.getDataRange().getDisplayValues();
+  if (!data || data.length <= 1) {
+    var outShEmpty = ss.getSheetByName(RECAP_OUT_SHEET);
+    if (!outShEmpty) outShEmpty = ss.insertSheet(RECAP_OUT_SHEET);
+    outShEmpty.clearContents();
+    outShEmpty.getRange(1, 1).setValue('Aucune donnée dans ' + src.getName());
+    return RECAP_OUT_SHEET;
+  }
+
+  var IDX_DATE = 0, IDX_CAMPING = 4, IDX_AFFAIRE = 5, IDX_WORK = 11;
+  var agg = {};
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rowDate = _parseDateDisplay(row[IDX_DATE]);
+    if (!rowDate) continue;
+    var camping = (row[IDX_CAMPING] || '').toString().trim() || '(sans camping)';
+    var affaire = (row[IDX_AFFAIRE] || '').toString().trim() || '(sans affaire)';
+    var workMin = parseTimeToMinutes(row[IDX_WORK]) || 0;
+    if (!agg[camping]) agg[camping] = { affaires: {}, totalMin: 0 };
+    if (!agg[camping].affaires[affaire]) agg[camping].affaires[affaire] = 0;
+    agg[camping].affaires[affaire] += workMin;
+    agg[camping].totalMin += workMin;
+  }
+
+  var campings = Object.keys(agg).sort(function(a,b){return a.localeCompare(b,'fr',{sensitivity:'base'});});
+  var out = [];
+  for (var ci = 0; ci < campings.length; ci++) {
+    var camp = campings[ci];
+    out.push([camp]);
+    out.push(['AFFAIRE', 'HEURES TRAVAIL (HH:MM)', 'Total minutes']);
+    var affaires = Object.keys(agg[camp].affaires).sort(function(a,b){return a.localeCompare(b,'fr',{sensitivity:'base'});});
+    for (var ai = 0; ai < affaires.length; ai++) {
+      var aff = affaires[ai];
+      var minutes = agg[camp].affaires[aff];
+      out.push([aff, minutes / 1440, minutes]);
+    }
+    out.push(['TOTAL', agg[camp].totalMin / 1440, agg[camp].totalMin]);
+    out.push([]);
+  }
+
+  var maxCols = out.reduce(function(m, r){ return Math.max(m, (r ? r.length : 0) || 0); }, 1);
+  var padded = out.map(function(r){
+    var row = Array.isArray(r) ? r.slice() : [];
+    while (row.length < maxCols) row.push('');
+    return row;
+  });
+
+  var outSh = ss.getSheetByName(RECAP_OUT_SHEET);
+  if (!outSh) outSh = ss.insertSheet(RECAP_OUT_SHEET);
+
+  var writeRows = padded.length, writeCols = maxCols;
+  if (outSh.getMaxRows() < writeRows) outSh.insertRowsAfter(outSh.getMaxRows(), writeRows - outSh.getMaxRows());
+  if (outSh.getMaxColumns() < writeCols) outSh.insertColumnsAfter(outSh.getMaxColumns(), writeCols - outSh.getMaxColumns());
+
+  var targetRange = outSh.getRange(1, 1, writeRows, writeCols);
+  var merged = targetRange.getMergedRanges();
+  if (!merged || merged.length === 0) {
+    targetRange.setValues(padded);
+  } else {
+    for (var r = 0; r < writeRows; r++) {
+      for (var c = 0; c < writeCols; c++) {
+        outSh.getRange(r + 1, c + 1).setValue(padded[r][c]);
+      }
+    }
+  }
+
+  var sheetMaxRows = outSh.getMaxRows(), sheetMaxCols = outSh.getMaxColumns();
+  if (sheetMaxRows > writeRows) {
+    try { outSh.getRange(writeRows + 1, 1, sheetMaxRows - writeRows, writeCols).clearContent(); } catch (e1) { Logger.log(e1.toString()); }
+  }
+  if (sheetMaxCols > writeCols) {
+    try { outSh.getRange(1, writeCols + 1, writeRows, sheetMaxCols - writeCols).clearContent(); } catch (e2) { Logger.log(e2.toString()); }
+  }
+
+  SpreadsheetApp.flush();
+  return RECAP_OUT_SHEET;
+}
+
+// === Validation paye ===
+function ensurePayeSheet_() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var sh = ss.getSheetByName(FEUILLE_PAYE_VALIDATION);
+  if (!sh) {
+    sh = ss.insertSheet(FEUILLE_PAYE_VALIDATION);
+    sh.appendRow([
+      "Date","Salarie","Heures travail (min)","Heures déplacement (min)",
+      "Panier midi","Panier soir","Zone","Forfait trajet",
+      "Heures sup (min)","Heures nuit (min)","Découchés","Forfait week-end",
+      "Statut","Validé par","Validé le","Commentaire"
+    ]);
+  }
+  return sh;
+}
+
+// Fonction appelée par le front
+function getPointagesAValider(dateFrom, dateTo, salarie) {
+  var sh = _findPointagesSheet();
+  if (!sh) return [];
+  var data = sh.getDataRange().getDisplayValues();
+  if (!data || data.length < 2) return [];
+
+  var header = data[0];
+
+  // Forçage des colonnes : Date (auto), Nom (auto), Travail = L (index 11), Déplacement = M (index 12)
+  var idxDate = header.findIndex(function(h){ return String(h).toLowerCase().includes("date"); });
+  var idxNom  = header.findIndex(function(h){ return String(h).toLowerCase().includes("nom"); });
+  var idxTrav = 11; // Colonne L (0-based)
+  var idxDepl = 12; // Colonne M (0-based)
+
+  if (idxDate < 0 || idxNom < 0) return [];
+
+  var dFrom = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+  var dTo   = dateTo   ? new Date(dateTo   + "T23:59:59") : null;
+
+  var validated = new Set();
+  var vData = ensurePayeSheet_().getDataRange().getDisplayValues();
+  for (var i = 1; i < vData.length; i++) {
+    var d = vData[i][0], n = vData[i][1];
+    if (d && n) validated.add(d + "|||" + n);
+  }
+
+  var agg = {};
+  for (var j = 1; j < data.length; j++) {
+    var row = data[j];
+    var dRow = parseCellDate(row[idxDate]);
+    if (!dRow) continue;
+    if (dFrom && dRow < dFrom) continue;
+    if (dTo && dRow > dTo) continue;
+
+    var nom = String(row[idxNom]||'').trim();
+    if (salarie && nom.toLowerCase() !== salarie.toLowerCase()) continue;
+
+    var iso = Utilities.formatDate(dRow, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    var key = iso + "|||" + nom;
+    if (validated.has(key)) continue;
+
+    // Lecture des durées sur L (travail) et M (déplacement)
+    var trav = parseTimeToMinutes(row[idxTrav]) || 0;
+    var depl = parseTimeToMinutes(row[idxDepl]) || 0;
+    if (!agg[key]) agg[key] = { date: iso, salarie: nom, travailMin: 0, deplacementMin: 0 };
+    agg[key].travailMin     += trav;
+    agg[key].deplacementMin += depl;
+  }
+  return Object.values(agg);
+}
+
+function validerPointage(p) {
+  if (!p || !p.date || !p.salarie) throw new Error("paramètres incomplets");
+  var sh = ensurePayeSheet_();
+  var data = sh.getDataRange().getDisplayValues();
+  var rowIndex = -1;
+  for (var i = 1; i < data.length; i++){
+    if (data[i][0] === p.date && data[i][1] === p.salarie) { rowIndex = i+1; break; }
+  }
+  var validatedBy = (p.validePar !== undefined && p.validePar !== null && p.validePar !== '')
+    ? p.validePar
+    : (Session.getActiveUser() ? Session.getActiveUser().getEmail() : "");
+  var validatedDate = new Date();
+  var values = [
+    p.date,
+    p.salarie,
+    minutesToHHMM(p.travailMin || 0),
+    minutesToHHMM(p.deplacementMin || 0),
+    p.panierMidi || "Non",
+    p.panierSoir || "Non",
+    p.zone || "",
+    p.forfaitTrajet || "",
+    minutesToHHMM(p.heuresSupMin || 0),
+    minutesToHHMM(p.heuresNuitMin || 0),
+    p.decouches || "Non",
+    p.forfaitWeekend || "Non",
+    "validé",
+    validatedBy,
+    validatedDate,
+    p.commentaire || ""
+  ];
+  if (rowIndex > 0) sh.getRange(rowIndex,1,1,values.length).setValues([values]);
+  else sh.appendRow(values);
+  return true;
+}
+
+// Mise à jour (date modifiable)
+function updatePayeValidation(p) {
+  if (!p || !p.salarie) throw new Error("paramètres incomplets");
+  var sh = ensurePayeSheet_();
+  var data = sh.getDataRange().getDisplayValues();
+
+  var targetDate = p.origDate || p.date;
+  var targetSalarie = p.origSalarie || p.salarie;
+  if (!targetDate || !targetSalarie) throw new Error("paramètres incomplets (date/salarié)");
+
+  var rowIndex = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === targetDate && data[i][1] === targetSalarie) { rowIndex = i + 1; break; }
+  }
+  if (rowIndex < 0) throw new Error("Ligne non trouvée");
+
+  var existing = sh.getRange(rowIndex, 1, 1, 16).getValues()[0];
+  if (p.date != null) existing[0] = p.date;
+  if (p.salarie != null) existing[1] = p.salarie;
+  if (p.travailMin      != null) existing[2]  = minutesToHHMM(p.travailMin);
+  if (p.deplacementMin  != null) existing[3]  = minutesToHHMM(p.deplacementMin);
+  if (p.panierMidi      != null) existing[4]  = p.panierMidi;
+  if (p.panierSoir      != null) existing[5]  = p.panierSoir;
+  if (p.zone            != null) existing[6]  = p.zone;
+  if (p.forfaitTrajet   != null) existing[7]  = p.forfaitTrajet;
+  if (p.heuresSupMin    != null) existing[8]  = minutesToHHMM(p.heuresSupMin);
+  if (p.heuresNuitMin   != null) existing[9]  = minutesToHHMM(p.heuresNuitMin);
+  if (p.decouches       != null) existing[10] = p.decouches;
+  if (p.forfaitWeekend  != null) existing[11] = p.forfaitWeekend;
+  if (p.commentaire     != null) existing[15] = p.commentaire;
+
+  sh.getRange(rowIndex, 1, 1, 16).setValues([existing]);
+  return true;
+}
+
+function deletePayeValidation(p) {
+  if (!p || !p.date || !p.salarie) throw new Error("paramètres incomplets");
+  var sh = ensurePayeSheet_();
+  var data = sh.getDataRange().getDisplayValues();
+  var rowIndex = -1;
+  for (var i = 1; i < data.length; i++){
+    if (data[i][0] === p.date && data[i][1] === p.salarie) { rowIndex = i+1; break; }
+  }
+  if (rowIndex < 0) throw new Error("Ligne non trouvée");
+  sh.deleteRow(rowIndex);
+  return true;
+}
+
+function getPayeValidee(dateFrom, dateTo, salarie) {
+  var sh = ensurePayeSheet_();
+  var data = sh.getDataRange().getDisplayValues();
+  if (!data || data.length < 2) return [];
+  var dFrom = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+  var dTo   = dateTo   ? new Date(dateTo   + "T23:59:59") : null;
+  var out = [];
+  for (var i = 1; i < data.length; i++){
+    var r = data[i];
+    var d = parseCellDate(r[0]);
+    if (!d) continue;
+    if (dFrom && d < dFrom) continue;
+    if (dTo   && d > dTo) continue;
+    var nom = r[1] || '';
+    if (salarie && nom.toLowerCase() !== salarie.toLowerCase()) continue;
+    out.push({
+      date: Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd"),
+      salarie: nom,
+      travailMin: parseTimeToMinutes(r[2]) || 0,
+      deplacementMin: parseTimeToMinutes(r[3]) || 0,
+      panierMidi: r[4],
+      panierSoir: r[5],
+      zone: r[6],
+      forfaitTrajet: r[7],
+      heuresSupMin: parseTimeToMinutes(r[8]) || 0,
+      heuresNuitMin: parseTimeToMinutes(r[9]) || 0,
+      decouches: r[10],
+      forfaitWeekend: r[11],
+      validePar: r[13],
+      valideLe: r[14],
+      commentaire: r[15]
+    });
+  }
+  return out;
+}
+
+// === Récap par salarié (zones, forfaits, combos) ===
+function getRecapParSalarie(dateFrom, dateTo) {
+  var sh = ensurePayeSheet_();
+  var data = sh.getDataRange().getDisplayValues();
+  if (!data || data.length < 2) return [];
+
+  var dFrom = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+  var dTo   = dateTo   ? new Date(dateTo   + "T23:59:59") : null;
+
+  var agg = {};            // salarie -> { zones:{}, trajets:{}, combos:{} }
+  var allZones   = {};
+  var allTrajets = {};
+  var allCombos  = {};     // key "zone|||ft"
+
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var d = parseCellDate(r[0]);
+    if (!d) continue;
+    if (dFrom && d < dFrom) continue;
+    if (dTo   && d > dTo) continue;
+
+    var nom   = r[1] || '';
+    var trav  = parseTimeToMinutes(r[2]) || 0;
+    var depl  = parseTimeToMinutes(r[3]) || 0;
+    var pm    = (r[4] || '').toString().trim() === 'Oui' ? 1 : 0;
+    var ps    = (r[5] || '').toString().trim() === 'Oui' ? 1 : 0;
+    var zone  = (r[6] || '').toString().trim();
+    var ft    = (r[7] || '').toString().trim();
+    var hsup  = parseTimeToMinutes(r[8]) || 0;
+    var hnuit = parseTimeToMinutes(r[9]) || 0;
+    var dec   = (r[10] || '').toString().trim() === 'Oui' ? 1 : 0;
+
+    if (!agg[nom]) {
+      agg[nom] = {
+        salarie: nom,
+        travailMin: 0,
+        deplacementMin: 0,
+        heuresSupMin: 0,
+        heuresNuitMin: 0,
+        panierMidi: 0,
+        panierSoir: 0,
+        decouches: 0,
+        zones: {},
+        trajets: {},
+        combos: {}
+      };
+    }
+
+    var a = agg[nom];
+    a.travailMin     += trav;
+    a.deplacementMin += depl;
+    a.heuresSupMin   += hsup;
+    a.heuresNuitMin  += hnuit;
+    a.panierMidi     += pm;
+    a.panierSoir     += ps;
+    a.decouches      += dec;
+
+    if (zone) {
+      allZones[zone] = true;
+      a.zones[zone] = (a.zones[zone] || 0) + depl;
+    }
+    if (ft) {
+      allTrajets[ft] = true;
+      a.trajets[ft] = (a.trajets[ft] || 0) + depl;
+    }
+    if (zone && ft) {
+      var key = zone + "|||" + ft;
+      allCombos[key] = true;
+      a.combos[key] = (a.combos[key] || 0) + depl;
+    }
+  }
+
+  function sortedKeys(obj) {
+    return Object.keys(obj).sort(function(x,y){return x.localeCompare(y,'fr',{sensitivity:'base'});});
+  }
+
+  var result = Object.keys(agg).sort(function(x,y){return x.localeCompare(y,'fr',{sensitivity:'base'});})
+    .map(function(k){ return agg[k]; });
+
+  result.allZones   = sortedKeys(allZones);
+  result.allTrajets = sortedKeys(allTrajets);
+  result.allCombos  = sortedKeys(allCombos);
+  return result;
+}
+
+// Export PDF du récap par salarié (tableau identique à l’affichage, avec titre + métadonnées)
+function exportRecapParSalariePDF(dateFrom, dateTo, exportedBy) {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  var recaps = getRecapParSalarie(dateFrom, dateTo);
+  if (!recaps.length) throw new Error("Aucune donnée à exporter.");
+
+  var tz = Session.getScriptTimeZone();
+  var now = new Date();
+  var exportDateStr = Utilities.formatDate(now, tz, "dd-MM-yyyy HH:mm");
+  var exportedByFinal = exportedBy || (Session.getActiveUser() && Session.getActiveUser().getEmail()) || "";
+
+  var df = dateFrom ? Utilities.formatDate(new Date(dateFrom + "T00:00:00"), tz, "dd-MM-yyyy") : "...";
+  var dt = dateTo   ? Utilities.formatDate(new Date(dateTo   + "T00:00:00"), tz, "dd-MM-yyyy") : "...";
+
+  var tempName = "TMP_RECAP_SAL_" + Date.now();
+  var sh = ss.insertSheet(tempName);
+  try {
+    sh.getRange(1,1).setValue("Récap paye par salarié").setFontSize(16).setFontWeight("bold").setFontFamily("Calibri");
+    sh.getRange(2,1).setValue("Exporté le : " + exportDateStr);
+    sh.getRange(3,1).setValue("Exporté par : " + exportedByFinal);
+    sh.getRange(4,1).setValue("Période : " + df + " au " + dt).setFontSize(12).setFontWeight("bold");
+    sh.getRange(1,1,4,8).setFontFamily("Calibri").setFontSize(9).setHorizontalAlignment("left");
+    sh.getRange(5,1).setValue("");
+
+    var headers = [
+      "Salarié",
+      "Travail (hh:mm)",
+      "Déplacement (hh:mm + zone/FT)",
+      "HSup (hh:mm)",
+      "HNuit (hh:mm)",
+      "Panier midi (#)",
+      "Panier soir (#)",
+      "Découchés (#)"
+    ];
+    var headerRow = 6;
+    sh.getRange(headerRow,1,1,headers.length).setValues([headers])
+      .setFontFamily("Calibri").setFontSize(10).setFontWeight("bold")
+      .setBackground("#e5edf8")
+      .setHorizontalAlignment("center");
+
+    var rows = recaps.map(function(r){
+      var detailLines = [];
+      var combos = r.combos ? Object.keys(r.combos) : [];
+      if (combos.length) {
+        combos.forEach(function(c){
+          var parts = c.split("|||");
+          var z = parts[0] || "";
+          var ft = parts[1] || "";
+          detailLines.push((z || "Zone ?") + " / " + (ft || "FT ?") + " : " + minutesToHHMM((r.combos && r.combos[c]) || 0));
+        });
+      } else {
+        if (r.zones) Object.keys(r.zones).forEach(function(z){
+          detailLines.push("Zone " + z + " : " + minutesToHHMM((r.zones && r.zones[z]) || 0));
+        });
+        if (r.trajets) Object.keys(r.trajets).forEach(function(t){
+          detailLines.push("FT " + t + " : " + minutesToHHMM((r.trajets && r.trajets[t]) || 0));
+        });
+      }
+      var detailCell = "Total : " + minutesToHHMM(r.deplacementMin);
+      if (detailLines.length) detailCell += "\n" + detailLines.join("\n");
+
+      return [
+        r.salarie || "",
+        minutesToHHMM(r.travailMin),
+        detailCell,
+        minutesToHHMM(r.heuresSupMin),
+        minutesToHHMM(r.heuresNuitMin),
+        r.panierMidi || 0,
+        r.panierSoir || 0,
+        r.decouches || 0
+      ];
+    });
+    if (rows.length) sh.getRange(headerRow+1,1,rows.length,headers.length).setValues(rows);
+
+    var tableRange = sh.getRange(headerRow,1,rows.length+1,headers.length);
+    tableRange.setFontFamily("Calibri").setFontSize(9);
+    sh.getRange(headerRow+1,1,rows.length,1).setHorizontalAlignment("left");
+    sh.getRange(headerRow+1,2,rows.length,headers.length-1).setHorizontalAlignment("center");
+    sh.getRange(headerRow+1,3,rows.length,1).setWrap(true);
+    sh.getRange(headerRow+1,1,rows.length,headers.length).setVerticalAlignment("top");
+    tableRange.setBorder(true,true,true,true,true,true,"#cfd5e0",SpreadsheetApp.BorderStyle.SOLID);
+
+    var widths = [120, 90, 260, 80, 80, 90, 90, 80];
+    for (var c=0;c<widths.length;c++) sh.setColumnWidth(c+1, widths[c]);
+
+    SpreadsheetApp.flush();
+
+    var params = [
+      "format=pdf",
+      "gid=" + sh.getSheetId(),
+      "size=A4",
+      "portrait=true",
+      "fitw=true",
+      "sheetnames=false",
+      "printtitle=false",
+      "pagenumbers=false",
+      "gridlines=false",
+      "fzr=false",
+      "top_margin=0.4",
+      "bottom_margin=0.4",
+      "left_margin=0.4",
+      "right_margin=0.4"
+    ];
+    var url = "https://docs.google.com/spreadsheets/d/" + SS_ID + "/export?" + params.join("&");
+    var token = ScriptApp.getOAuthToken();
+    var resp = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    var blob = resp.getBlob().setName("recap_paye_salaries.pdf");
+
+    return {
+      base64: Utilities.base64Encode(blob.getBytes()),
+      mimeType: blob.getContentType(),
+      name: blob.getName()
+    };
+  } finally {
+    try { ss.deleteSheet(sh); } catch(e){}
+  }
+}
+
+function exportActiveXlsx() {
+  var url = 'https://www.googleapis.com/drive/v3/files/' + SS_ID +
+            '/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  var resp = UrlFetchApp.fetch(url, {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  });
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('Export Drive: ' + resp.getResponseCode() + ' ' + resp.getContentText());
+  }
+  var blob = resp.getBlob().setName('export.xlsx');
+  return {
+    base64: Utilities.base64Encode(blob.getBytes()),
+    mimeType: blob.getContentType(),
+    name: blob.getName()
+  };
+}
+
+// Mot de passe admin attendu (à stocker idéalement ailleurs, ici en clair pour l’exemple)
+var ADMIN_PASSWORD = "PCELEC";
+
+/**
+ * Nettoyage sécurisé : nécessite le mot de passe admin.
+ * TODO: remplace la logique de clearDataSafely par ce que tu veux vraiment effacer.
+ */
+function nettoyerApplication(adminPwd) {
+  if (adminPwd !== ADMIN_PASSWORD) {
+    throw new Error("Mot de passe administrateur incorrect.");
+  }
+  clearDataSafely();
+  return true;
+}
+
+/**
+ * À adapter : efface / réinitialise ce que tu veux vraiment nettoyer.
+ */
+function clearDataSafely() {
+  var ss = SpreadsheetApp.openById(SS_ID);
+  // Exemple : effacer le contenu (sans l’entête) de certaines feuilles
+  var sheetsToClear = ["Pointages", "PAYES_VALIDATION", "Planning"];
+  sheetsToClear.forEach(function(name) {
+    var sh = ss.getSheetByName(name);
+    if (sh && sh.getLastRow() > 1) {
+      sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).clearContent();
+    }
+  });
+}
+
+// === Nouveau : paquet initial pour limiter les allers-retours ===
+function getInitialData(startIso, endIso) {
+  return {
+    campAff: getCampingsEtAffaires(),
+    employes: getEmployes(),
+    planning: getPlanning(startIso, endIso)
+  };
+}
+
+// === Nouveau : historique filtré côté serveur ===
+function getHistoriquePointagesFiltered(dateFrom, dateTo, salarie, camping) {
+  var data = getHistoriquePointages();
+  if (!data || data.length < 2) return data;
+  var header = data[0];
+  var idxDate = header.findIndex(function(h){ return String(h).toLowerCase().includes('date'); });
+  var idxNom  = header.findIndex(function(h){ return String(h).toLowerCase().includes('nom'); });
+  var idxCamp = header.findIndex(function(h){ return String(h).toLowerCase().includes('camping'); });
+  var dFrom = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+  var dTo   = dateTo   ? new Date(dateTo   + "T23:59:59") : null;
+
+  function parseCellDateLocal(s){
+    if(!s) return null; s = s.toString().trim();
+    var iso = /^\d{4}-\d{2}-\d{2}$/; var dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    if(iso.test(s)) return new Date(s+'T00:00:00');
+    var m=s.match(dmy); if(m) return new Date(m[3]+'-'+m[2]+'-'+m[1]+'T00:00:00');
+    var pd=new Date(s); return isNaN(pd.getTime())?null:pd;
+  }
+
+  var filtered = [header.concat(["ROW_INDEX"])]; // on ajoute l'index de ligne (1-based)
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var keep = true;
+    if (idxDate >= 0 && (dFrom || dTo)) {
+      var cd = parseCellDateLocal(row[idxDate]);
+      if (!cd) continue;
+      if (dFrom && cd < dFrom) keep = false;
+      if (dTo   && cd > dTo) keep = false;
+    }
+    if (keep && idxNom >= 0 && salarie) {
+      if ((row[idxNom] || '').toString().trim().toLowerCase() !== salarie.toString().trim().toLowerCase()) keep = false;
+    }
+    if (keep && idxCamp >= 0 && camping) {
+      if ((row[idxCamp] || '').toString().trim().toLowerCase() !== camping.toString().trim().toLowerCase()) keep = false;
+    }
+    if (keep) filtered.push(row.concat([i+1])); // i+1 = row index (1-based)
+  }
+  return filtered;
+}
+
+function exportActiveXlsxSansDonneesUser() {
+  // Copie temporaire du fichier
+  const srcFile = DriveApp.getFileById(SS_ID);
+  const tempCopy = srcFile.makeCopy('TMP_EXPORT_' + Date.now());
+  const tempId = tempCopy.getId();
+
+  try {
+    const ss = SpreadsheetApp.openById(tempId);
+    const sh = ss.getSheetByName(FEUILLE_DONNEES_USER);
+    if (sh) ss.deleteSheet(sh); // supprimer la feuille sensible
+    SpreadsheetApp.flush(); // pas de saveAndClose côté SheetsApp
+
+    const url = 'https://www.googleapis.com/drive/v3/files/' + tempId +
+                '/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const resp = UrlFetchApp.fetch(url, {
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true
+    });
+    if (resp.getResponseCode() !== 200) {
+      throw new Error('Export Drive: ' + resp.getResponseCode() + ' ' + resp.getContentText());
+    }
+    const blob = resp.getBlob().setName('export_sans_identifiants.xlsx');
+    return {
+      base64: Utilities.base64Encode(blob.getBytes()),
+      mimeType: blob.getContentType(),
+      name: blob.getName()
+    };
+  } finally {
+    try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e){}
+  }
+}
+
+// --- ÉDITION HISTORIQUE : mise à jour d'une ligne et recalcul auto ---
+// --- ÉDITION HISTORIQUE : mise à jour d'une ligne et recalcul auto ---
+function updateHistoriquePointage(rowIndex, payload) {
+  if (!rowIndex || rowIndex < 2) throw new Error("Index de ligne invalide");
+  if (!payload) throw new Error("Payload manquant");
+
+  const sh = SpreadsheetApp.openById(SS_ID).getSheetByName(FEUILLE_POINTAGES);
+  if (!sh) throw new Error("Feuille Pointages introuvable.");
+  const last = sh.getLastRow();
+  if (rowIndex > last) throw new Error("Ligne hors limites");
+
+  const COL_DATE = 1;
+  const COL_NATURE = 4;
+  const COL_TRAV = 12;
+  const COL_DEPL = 13;
+
+  const nature = String(sh.getRange(rowIndex, COL_NATURE).getValue() || "").toUpperCase();
+
+  const dateStr   = payload.date || "";
+  const camping   = payload.camping || "";
+  const affaire   = payload.affaire || "";
+  const debut     = payload.debut   || "";
+  const pause     = payload.pause   || "";
+  const reprise   = payload.reprise || "";
+  const fin       = payload.fin     || "";
+  const commentaire = payload.commentaire || "";
+
+  const d = parseCellDate(dateStr);
+  if (!d) throw new Error("Date invalide");
+  const tz = Session.getScriptTimeZone();
+  const dateIso = Utilities.formatDate(d, tz, "yyyy-MM-dd");
+
+  const minutes = computeDurationMinutes(debut, fin, pause, reprise);
+  let travailMin = 0, deplMin = 0;
+  if (nature.indexOf("DEPL") === 0) {
+    const isDomicile = nature.indexOf("DOMICILE") >= 0;
+    if (isDomicile) deplMin = minutes; else travailMin = minutes;
+  } else {
+    travailMin = minutes;
+  }
+
+  const values = [[
+    dateIso, null, null, null,          // Date, Type, Nom, Nature (non modifiés ici)
+    camping, affaire, commentaire,      // 5,6,7
+    debut, pause, reprise, fin,         // 8,9,10,11
+    minutesToHHMM(travailMin),          // 12
+    minutesToHHMM(deplMin)              // 13
+  ]];
+
+  // Écriture sur 13 colonnes (1 à 13)
+  sh.getRange(rowIndex, COL_DATE, 1, 13).setValues(values);
+
+  // Applique le format durée sur travail/déplacement
+  if (travailMin >= 0) sh.getRange(rowIndex, COL_TRAV).setValue(travailMin / 1440).setNumberFormat("[h]:mm");
+  if (deplMin >= 0)   sh.getRange(rowIndex, COL_DEPL).setValue(deplMin   / 1440).setNumberFormat("[h]:mm");
+
+  try {
+    if (typeof generateRecapCampingKeepFormatting === "function") generateRecapCampingKeepFormatting();
+    else if (typeof generateRecapCamping === "function") generateRecapCamping();
+  } catch (e) {
+    Logger.log("Erreur recap: " + e);
+  }
+
+  return true;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// Supprime une ligne de l'historique par index de ligne (1-based, inclut l'entête)
+// rowIndex doit être >=2 (on ne supprime pas l'entête)
+function deleteHistoriquePointage(rowIndex){
+  if (!rowIndex || rowIndex < 2) throw new Error("Index de ligne invalide");
+  const sh = SpreadsheetApp.openById(SS_ID).getSheetByName(FEUILLE_POINTAGES);
+  if (!sh) throw new Error("Feuille Pointages introuvable.");
+  const last = sh.getLastRow();
+  if (rowIndex > last) throw new Error("Ligne hors limites");
+  sh.deleteRow(rowIndex);
+
+  try {
+    if (typeof generateRecapCampingKeepFormatting === "function") generateRecapCampingKeepFormatting();
+    else if (typeof generateRecapCamping === "function") generateRecapCamping();
+  } catch (e) {
+    Logger.log("Erreur recap après suppression: " + e);
+  }
+
+  return true;
+}

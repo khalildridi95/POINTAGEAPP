@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>PCELEC</title>
+  <style>
+    :root{--primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;}
+    html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#111;}
+    body{min-height:100%;margin:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    .container{width:100%;max-width:520px;margin:40px auto 120px auto;padding:16px;box-sizing:border-box;}
+    h2{margin:0 0 16px 0;color:#1976d2;font-size:26px;text-align:center;}
+    label{display:block;margin-top:16px;font-size:16px;color:#333;}
+    select,input[type="password"]{display:block;width:100%;padding:10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:16px;background:#fff;box-sizing:border-box;}
+    .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:0 12px 32px rgba(16,24,40,0.06);}
+    .muted{color:#6b7280;font-size:14px;}
+    .actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;justify-content:center;}
+    button{background:var(--primary);color:#fff;border:none;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;font-size:16px;min-height:40px;}
+    .error-text{color:#b91c1c;font-size:14px;margin-top:8px;display:none;}
+    .loading-wrapper{margin-top:16px;display:none;flex-direction:column;gap:8px;}
+    .loading-label{font-size:14px;color:#333;display:flex;align-items:center;gap:8px;}
+    .loading-track{width:100%;height:10px;border-radius:999px;background:#e5e7eb;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.12);}
+    .loading-fill{height:100%;width:0%;background:linear-gradient(90deg,#1976d2,#42a5f5,#1976d2);background-size:200% 100%;animation: shimmer 1.6s linear infinite;transition: width 0.2s ease-out;}
+    @keyframes shimmer{0%{background-position:0% 50%;}100%{background-position:200% 50%;}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="text-align:center;margin-bottom:24px;">
+      <img id="appLogo" alt="logo" style="height:120px;max-width:240px;display:none;">
+    </div>
+
+    <div id="page-login" class="card" aria-live="polite">
+      <h2>Connexion</h2>
+
+      <label for="login">Identifiant
+        <select id="login" aria-label="identifiant"></select>
+      </label>
+      <div id="err_login" class="error-text"></div>
+
+      <label for="password">Mot de passe
+        <input type="password" id="password" autocomplete="current-password">
+      </label>
+      <div id="err_password" class="error-text"></div>
+
+      <div class="actions">
+        <button id="btnLogin" onclick="seConnecter()">Se connecter</button>
+      </div>
+
+      <div id="login-msg" class="error-text" style="display:none;margin-top:12px"></div>
+
+      <div id="loader" class="loading-wrapper" aria-live="polite">
+        <div class="loading-label">
+          <span id="loader-text">Connexion sécurisée...</span>
+        </div>
+        <div class="loading-track"><div id="loader-fill" class="loading-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:3000/api";
+
+    let loadTimer=null, loadProgress=0;
+
+    window.onload = function(){
+      chargerIdentifiants();
+    };
+
+    async function fetchJSON(url, options){
+      const res = await fetch(url, options || {});
+      if(!res.ok) throw new Error(res.status+" "+res.statusText);
+      return res.json();
+    }
+
+    function chargerIdentifiants(){
+      const sel = document.getElementById('login');
+      sel.innerHTML = '<option>Chargement...</option>';
+      fetchJSON(API_BASE + "/getIdentifiants")
+        .then(list=>{
+          sel.innerHTML='';
+          if(!list || list.length===0){ sel.innerHTML='<option>-- Aucun identifiant --</option>'; return; }
+          const def=document.createElement('option'); def.value=''; def.textContent='-- Choisir --'; sel.appendChild(def);
+          list.forEach(id=>{ const opt=document.createElement('option'); opt.value=id; opt.textContent=id; sel.appendChild(opt); });
+        })
+        .catch(()=>{ sel.innerHTML='<option>Erreur</option>'; showError('login','Erreur chargement identifiants'); });
+    }
+
+    function startLoading(text){
+      const wrap=document.getElementById('loader'), fill=document.getElementById('loader-fill'), label=document.getElementById('loader-text');
+      if(!wrap||!fill) return;
+      wrap.style.display='flex'; if(label) label.textContent=text||'Connexion sécurisée...';
+      loadProgress=0; fill.style.width='0%';
+      if(loadTimer) clearInterval(loadTimer);
+      loadTimer=setInterval(()=>{ loadProgress=Math.min(90, loadProgress+Math.max(1,Math.random()*12)); fill.style.width=loadProgress+'%'; }, 180);
+    }
+    function stopLoading(success){
+      const wrap=document.getElementById('loader'), fill=document.getElementById('loader-fill'), label=document.getElementById('loader-text');
+      if(loadTimer) clearInterval(loadTimer);
+      if(fill) fill.style.width='100%';
+      if(label) label.textContent = success ? 'Connexion établie' : 'Prêt';
+      setTimeout(()=>{ if(wrap) wrap.style.display='none'; if(fill) fill.style.width='0%'; },400);
+    }
+
+    function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); }
+    function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
+
+    function seConnecter(){
+      clearAllErrors();
+      const btn=document.getElementById('btnLogin');
+      const login=document.getElementById('login').value;
+      const pass=document.getElementById('password').value;
+      const loginMsg=document.getElementById('login-msg');
+      if(loginMsg){ loginMsg.textContent=''; loginMsg.style.display='none'; }
+
+      if(!login){
+        if(loginMsg){ loginMsg.textContent='Sélectionne un identifiant.'; loginMsg.style.display='block'; }
+        return;
+      }
+
+      startLoading('Validation des accès...');
+      if(btn) btn.disabled=true;
+
+      fetchJSON(API_BASE + "/checkLogin", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ login, password: pass })
+      })
+      .then(ok=>{
+        if(ok){
+          return fetchJSON(API_BASE + "/getRoleForLogin", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ login })
+          }).then(role=>{
+            try{ localStorage.setItem('userLogin', login); }catch(e){}
+            stopLoading(true);
+            if(role==='admin') window.location.href = "./ADMIN.html?u="+encodeURIComponent(login);
+            else if(role==='compta') window.location.href = "./VALIDATION.html?u="+encodeURIComponent(login);
+            else window.location.href = "./SALARIE.html?u="+encodeURIComponent(login); // à créer si besoin
+          });
+        } else {
+          stopLoading(false);
+          if(loginMsg){ loginMsg.textContent='Mot de passe incorrect'; loginMsg.style.display='block'; }
+          if(btn) btn.disabled=false;
+        }
+      })
+      .catch(()=>{
+        stopLoading(false);
+        if(loginMsg){ loginMsg.textContent='Erreur vérification'; loginMsg.style.display='block'; }
+        if(btn) btn.disabled=false;
+      });
+    }
+  </script>
+</body>
+</html>
