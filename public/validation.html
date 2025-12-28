@@ -231,11 +231,11 @@
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
-  const API_BASE = USE_LOCAL
-    ? ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
-        ? "http://localhost:3000/api"
-        : "https://pointage-oeax.onrender.com/api")
-    : '';
+    const API_BASE = USE_LOCAL
+      ? ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
+          ? "http://localhost:3000/api"
+          : "https://pointage-oeax.onrender.com/api")
+      : '';
     async function apiGet(path){ const r=await fetch(API_BASE+path); if(!r.ok) throw new Error(r.statusText); return r.json(); }
     async function apiPost(path, body){ const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(r.statusText); return r.json(); }
 
@@ -247,7 +247,27 @@
     let currentUser='', employees=[], recapCache=[], recapSalCache=[], recapSalRaw=[], campAff=[], cachedHistory=null;
     let historyHeaderIndices={ date:-1, nom:-1, camping:-1 };
 
-    function logout(){ try{localStorage.removeItem('userLogin');}catch(e){} window.location.href='index.html'; }
+    function redirectToLogin(){
+      try{ localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){}
+      window.location.href='index.html';
+    }
+    function ensureAuth(){
+      const storedUser = (()=>{ try{return localStorage.getItem('userLogin')||'';}catch(e){return'';} })();
+      const storedRole = (()=>{ try{return localStorage.getItem('userRole')||'';}catch(e){return'';} })();
+      const params = new URLSearchParams(window.location.search);
+      const urlUser = params.get('u') || '';
+      if(!storedUser || !storedRole) redirectToLogin();
+      if(urlUser && urlUser !== storedUser) redirectToLogin();
+      if(!urlUser){
+        window.location.replace(window.location.pathname + '?u=' + encodeURIComponent(storedUser));
+        return false;
+      }
+      if(storedRole !== 'compta') redirectToLogin();
+      currentUser = storedUser;
+      return true;
+    }
+
+    function logout(){ try{localStorage.removeItem('userLogin'); localStorage.removeItem('userRole');}catch(e){} window.location.href='index.html'; }
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60),mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
     function hhmmToMin(v){ if(!v) return 0; const m=String(v).trim().match(/^(\d{1,2}):(\d{2})$/); if(!m) return 0; return parseInt(m[1],10)*60+parseInt(m[2],10); }
     function fmtDateLocal(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -259,10 +279,11 @@
     function nowMeta(){ const d=new Date(); return { iso: fmtDateLocal(d), hm: d.toTimeString().slice(0,5) }; }
 
     window.onload=()=>{
+      if(!ensureAuth()) return;
       const t=fmtDateLocal(new Date());
       ['fFrom','fTo','rFrom','rTo','rsFrom','rsTo','hFrom','hTo'].forEach(id=>{const el=document.getElementById(id); if(el) el.value=t;});
       const params=new URLSearchParams(window.location.search);
-      currentUser=params.get('u')||''; try{ if(!currentUser) currentUser=localStorage.getItem('userLogin')||''; }catch(e){}
+      currentUser=params.get('u')||currentUser||''; try{ if(!currentUser) currentUser=localStorage.getItem('userLogin')||''; }catch(e){}
       Promise.all([populateEmployees(), loadCampAff()]).then(()=>{ loadAValider(); loadRecap(); loadRecapSal(); applyHistoryFilters(); });
     };
 
@@ -602,11 +623,105 @@
       return [header].concat(filtered);
     }
 
+    function renderHistory(data){
+      const table=histTable, thead=table.querySelector('thead'), tbody=table.querySelector('tbody');
+      thead.innerHTML=''; tbody.innerHTML='';
+      if(!data||!data.length){ histStatus.textContent='Aucun historique.'; return; }
+      const header=data[0]; const hasRowIdx=header[header.length-1]==='ROW_INDEX'; const visibleHeader=hasRowIdx?header.slice(0,-1):header;
+      const trh=document.createElement('tr'); visibleHeader.forEach(h=>{ const th=document.createElement('th'); th.textContent=h; trh.appendChild(th); }); const thAct=document.createElement('th'); thAct.textContent='Actions'; trh.appendChild(thAct); thead.appendChild(trh);
+      for(let i=1;i<data.length;i++){
+        const row=data[i]; const rowIndex=hasRowIdx?row[row.length-1]:''; const cells=hasRowIdx?row.slice(0,-1):row; const tr=document.createElement('tr'); tr.dataset.rowIndex=rowIndex;
+        cells.forEach(c=>{ const td=document.createElement('td'); td.dataset.raw=c||''; td.textContent=fmtHHMM(c)||''; tr.appendChild(td); });
+        const tdActions=document.createElement('td'); tdActions.className='history-actions'; tdActions.innerHTML=`<button class="btn-secondary btn-icon" onclick="startEditHistoryRow(this)">✎</button><button class="btn-secondary btn-icon" onclick="deleteHistoryRow(this)">🗑</button>`; tr.appendChild(tdActions);
+        tbody.appendChild(tr);
+      }
+      const wrap=document.querySelector('.history-table-wrap'), hsb=document.querySelector('.h-scrollbar'), hsbInner=document.querySelector('.h-scrollbar-inner');
+      if(wrap&&hsb&&hsbInner){ hsbInner.style.width=wrap.scrollWidth+'px'; hsb.scrollLeft=wrap.scrollLeft; hsb.onscroll=()=>wrap.scrollLeft=hsb.scrollLeft; wrap.onscroll=()=>hsb.scrollLeft=wrap.scrollLeft; }
+    }
+
+    async function telechargerPDFHistorique(){
+      const status=histStatus;
+      try{
+        const data=filterCachedHistory();
+        if(!data||data.length<=1) throw new Error("Aucune donnée à exporter. Clique Appliquer d'abord.");
+        const header=data[0]; const hasRowIdx=header[header.length-1]==='ROW_INDEX';
+        const headForPdf=hasRowIdx?header.slice(0,-1):header;
+        const bodyForPdf=data.slice(1).map(r=>hasRowIdx?r.slice(0,-1):r);
+        await ensureJsPDF(); const { jsPDF }=window.jspdf; const doc=new jsPDF('l','pt','a4');
+        const df=hFrom.value||'', dt=hTo.value||'', sal=hUser.value||'', campSel=hCamp.value||'', meta=nowMeta(), exportedBy=currentUser||'';
+        const periodText=(df||dt)?`Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`:'Période : toutes dates';
+        const salText='Salarié : '+(sal||'Tous'); const campText='Camping : '+(campSel||'Tous'); const genText='Généré le : '+fmtDateDisplay(meta.iso)+' '+meta.hm; const byText='Exporté par : '+(exportedBy||'—');
+        doc.setFontSize(14); doc.text('Historique pointages',16,22);
+        doc.setFontSize(11); doc.text(periodText,16,40); doc.text(salText,16,56); doc.text(campText,16,72); doc.text(genText,16,88); doc.text(byText,16,104);
+        doc.autoTable({ head:[headForPdf.map(h=>h||'')], body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')), styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:[37,99,235],textColor:255}, alternateRowStyles:{fillColor:[240,245,255]}, margin:{top:128,bottom:16,left:16,right:16} });
+        doc.save('historique_pointages.pdf');
+      }catch(e){ alert(e && e.message ? e.message : e); }
+      finally{ if(status) status.textContent=''; }
+    }
+
+    function buildYesNoSelect(val,midi=false){ const isOui=(val||'').trim()==='Oui'; const defaultOui=midi; const ouiSel=isOui||(!isOui&&defaultOui); return `<select class="sel-yn"><option${ouiSel?' selected':''}>Oui</option><option${!ouiSel?' selected':''}>Non</option></select>`; }
+    function buildZoneSelect(val){ const zones=["","1","2","3","4","5","Grand déplacement"]; return `<select class="sel-zone">`+zones.map(z=>`<option value="${z}"${z===val?' selected':''}>${z||'--'}</option>`).join('')+`</select>`; }
+    function buildTrajetSelect(val){ const opts=["","<3h","3-6h",">6h"]; return `<select class="sel-trajet">`+opts.map(o=>`<option${o===val?' selected':''}>${o||'--'}</option>`).join('')+`</select>`; }
+    function sanitizePdfCell(v){ return String(v ?? '').replace(/→/g,' au ').replace(/…/g,'...'); }
+
+    async function ensureJsPDF(){
+      const needJsPDF=(typeof window.jspdf==='undefined'||typeof window.jspdf.jsPDF==='undefined');
+      const needAuto=(typeof window.jspdf==='undefined'||!window.jspdf.jsPDF||!window.jspdf.jsPDF.API?.autoTable);
+      if(!needJsPDF&&!needAuto) return;
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+      if(typeof window.jspdf==='undefined'||typeof window.jspdf.jsPDF==='undefined') throw new Error("jsPDF non disponible après chargement.");
+    }
+    function loadScriptOnce(src,label){
+      return new Promise((resolve,reject)=>{
+        const existing=document.querySelector(`script[data-src="${src}"]`);
+        if(existing){ existing.addEventListener('load',()=>resolve()); existing.addEventListener('error',()=>reject(new Error('Échec chargement '+src))); return; }
+        const s=document.createElement('script'); s.src=src; s.async=true; s.defer=true; s.dataset.src=src;
+        s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Échec chargement '+src));
+        document.head.appendChild(s);
+      });
+    }
+
+    function afficherPlanning(){
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
+      setDefaultHistoryToday();
+      const panel=document.getElementById('historyPanel');
+      panel.style.display='block';
+      panel.setAttribute('aria-hidden','false');
+      populateHistoryFiltersFromData();
+      histStatus.textContent='Chargement...';
+      applyHistoryFilters();
+    }
+
+    function applyHistoryFilters(){
+      const status=histStatus; if(status) status.textContent='Chargement...';
+      const payload={dateFrom:hFrom.value||'',dateTo:hTo.value||'',salarie:hUser.value||'',camping:hCamp.value||''};
+      const onSuccess=data=>{ cachedHistory=data||[]; populateHistoryFiltersFromData(); renderHistory(filterCachedHistory()); if(status) status.textContent=(cachedHistory.length>1?(cachedHistory.length-1):0)+' ligne(s)'; };
+      const onError=err=>{ cachedHistory=null; renderHistory([]); if(status) status.textContent='Erreur: '+err; };
+      if(USE_LOCAL) apiPost('/getHistoriquePointagesFiltered',payload).then(onSuccess).catch(onError);
+      else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getHistoriquePointagesFiltered(payload.dateFrom,payload.dateTo,payload.salarie,payload.camping);
+    }
+
+    function resetHistoryFilters(){
+      setDefaultHistoryToday();
+      if(hUser) hUser.value=''; if(hCamp) hCamp.value='';
+      renderHistory([]);
+      histStatus.textContent='Choisissez une plage puis Appliquer.';
+    }
+
     function buildCampingSelect(current){
       const curr=(current||'').trim(); const sel=document.createElement('select'); sel.innerHTML='<option value="">--</option>';
       const camps=[...new Set((campAff||[]).map(c=>String(c.camping||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
-      camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===curr) o.selected=true; sel.appendChild(o); });
-      sel.onchange=function(){ const affSel = this.parentElement.querySelector('select[data-kind="affaire"]'); if (affSel) fillAffaireSelect(affSel, this.value, ''); };
+      camps.forEach(c=>{
+        const o=document.createElement('option'); o.value=c; o.textContent=c;
+        if (c === curr) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange=function(){
+        const affSel = this.parentElement.querySelector('select[data-kind="affaire"]');
+        if (affSel) fillAffaireSelect(affSel, this.value, '');
+      };
       return sel;
     }
     function fillAffaireSelect(sel,camping,currentAff){
@@ -729,6 +844,18 @@
         s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Échec chargement '+src));
         document.head.appendChild(s);
       });
+    }
+
+    function afficherPlanning(){
+      const meta = document.querySelector('meta[name="viewport"]');
+      if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
+      setDefaultHistoryToday();
+      const panel=document.getElementById('historyPanel');
+      panel.style.display='block';
+      panel.setAttribute('aria-hidden','false');
+      populateHistoryFiltersFromData();
+      histStatus.textContent='Chargement...';
+      applyHistoryFilters();
     }
   </script>
 </body>
