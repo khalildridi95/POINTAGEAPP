@@ -174,7 +174,7 @@
     <div class="card">
       <div class="card-body">
         <h2>Récap par salarié (agrégé)</h2>
-        <div class="flex" style="margin-bottom:12px;">
+        <div class="flex" style="margin-bottom:12px.">
           <label>Du <input type="date" id="rsFrom"></label>
           <label>Au <input type="date" id="rsTo"></label>
           <label>Salarié
@@ -216,7 +216,7 @@
           <button class="btn-secondary" onclick="resetHistoryFilters()">Réinitialiser</button>
           <button class="btn-secondary" onclick="telechargerPDFHistorique()">Exporter PDF</button>
         </div>
-        <div id="histStatus" class="muted" style="margin-bottom:8px;">Choisissez une plage puis Appliquer.</div>
+        <div id="histStatus" class="muted" style="margin-bottom:8px.">Choisissez une plage puis Appliquer.</div>
         <div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>
         <div class="history-table-wrap">
           <table class="history-table" id="histTable">
@@ -229,23 +229,20 @@
   </div> <!-- fin #app-root -->
 
   <script>
-    /* --- Config locale / Apps Script --- */
-    const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
-    const API_BASE = USE_LOCAL ? 'http://localhost:3000/api' : '';
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const USE_LOCAL = IS_LOCAL;
+    const API_BASE = USE_LOCAL ? 'http://localhost:3000/api' : 'https://pointage-oeax.onrender.com/api';
     async function apiGet(path){ const r=await fetch(API_BASE+path); if(!r.ok) throw new Error(r.statusText); return r.json(); }
     async function apiPost(path, body){ const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(r.statusText); return r.json(); }
 
-    /* --- Const UI --- */
     const selectYesNo = `<select class="sel-yn"><option>Oui</option><option selected>Non</option></select>`;
     const selectYesNoDefaultOui = `<select class="sel-yn"><option selected>Oui</option><option>Non</option></select>`;
     const selectZone = `<select class="sel-zone"><option value="">--</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>Grand déplacement</option></select>`;
     const selectTrajet = `<select class="sel-trajet"><option value="">--</option><option>&lt;3h</option><option>3-6h</option><option>&gt;6h</option></select>`;
 
-    /* --- State --- */
     let currentUser='', employees=[], recapCache=[], recapSalCache=[], recapSalRaw=[], campAff=[], cachedHistory=null;
     let historyHeaderIndices={ date:-1, nom:-1, camping:-1 };
 
-    /* --- Helpers --- */
     function logout(){ try{localStorage.removeItem('userLogin');}catch(e){} window.location.href='index.html'; }
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60),mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
     function hhmmToMin(v){ if(!v) return 0; const m=String(v).trim().match(/^(\d{1,2}):(\d{2})$/); if(!m) return 0; return parseInt(m[1],10)*60+parseInt(m[2],10); }
@@ -257,7 +254,6 @@
     function toIsoDate(str){ if(!str) return ''; const s=String(str).trim(); const iso=/^\d{4}-\d{2}-\d{2}$/; const dmy=/^(\d{2})\/(\d{2})\/(\d{4})$/; if(iso.test(s)) return s; const m=s.match(dmy); if(m) return `${m[3]}-${m[2]}-${m[1]}`; const d=new Date(s); if(!isNaN(d)) return fmtDateLocal(d); return ''; }
     function nowMeta(){ const d=new Date(); return { iso: fmtDateLocal(d), hm: d.toTimeString().slice(0,5) }; }
 
-    /* --- Init --- */
     window.onload=()=>{
       const t=fmtDateLocal(new Date());
       ['fFrom','fTo','rFrom','rTo','rsFrom','rsTo','hFrom','hTo'].forEach(id=>{const el=document.getElementById(id); if(el) el.value=t;});
@@ -266,7 +262,6 @@
       Promise.all([populateEmployees(), loadCampAff()]).then(()=>{ loadAValider(); loadRecap(); loadRecapSal(); applyHistoryFilters(); });
     };
 
-    /* --- Employees & camps --- */
     function populateEmployees(){
       const fSel=fUser, rSel=rUser, mSel=mUser, hSel=hUser, rsSel=rsUser;
       function fill(sel, includeEmpty){ if(!sel) return; sel.innerHTML=includeEmpty?'<option value="">Choisir…</option>':'<option value="">Tous</option>'; (employees||[]).forEach(n=>{const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);}); }
@@ -285,7 +280,6 @@
       });
     }
 
-    /* --- Pointages à valider --- */
     function aggregateAValider(list){
       const map=new Map();
       (list||[]).forEach(r=>{
@@ -363,7 +357,6 @@
       else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).validerPointage(payload);
     }
 
-    /* --- Saisie manuelle --- */
     function toggleManual(){
       const m=manualForm; const show=m.style.display==='none'||m.style.display===''; m.style.display=show?'block':'none';
       if(show){ const t=fmtDateLocal(new Date()); mDate.value=t; mTrav.value="00:00"; mDepl.value="00:00"; mHS.value="00:00"; mHN.value="00:00"; manualStatus.textContent=''; }
@@ -386,7 +379,6 @@
       else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).validerPointage(payload);
     }
 
-    /* --- Récap validé --- */
     function formatDeplacementDetail(r){
       const total=minToHHMM(r.deplacementMin); const lines=[];
       if(r.zone || r.forfaitTrajet){ const z=r.zone?`Zone ${r.zone}`:'Zone ?'; const ft=r.forfaitTrajet||'FT ?'; lines.push(`${z} / ${ft} : ${total}`); }
@@ -490,7 +482,6 @@
       }catch(e){ alert("Erreur PDF: "+e); }
     }
 
-    /* --- Récap par salarié (agrégé) --- */
     function loadRecapSal(){
       if(rsStatus) rsStatus.textContent="Chargement...";
       const payload={dateFrom:rsFrom.value,dateTo:rsTo.value,salarie:rsUser.value};
@@ -562,7 +553,6 @@
       }catch(e){ alert(e && e.message ? e.message : e); }
     }
 
-    /* --- Historique --- */
     function setDefaultHistoryToday(){ const t=fmtDateLocal(new Date()); if(hFrom) hFrom.value=t; if(hTo) hTo.value=t; }
     function populateHistoryCampSelect(){ const sel=hCamp; if(!sel) return; sel.innerHTML='<option value="">Tous</option>'; const camps=[...new Set((campAff||[]).map(c=>String(c.camping||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})); camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); }); }
 
@@ -612,15 +602,21 @@
       const curr=(current||'').trim(); const sel=document.createElement('select'); sel.innerHTML='<option value="">--</option>';
       const camps=[...new Set((campAff||[]).map(c=>String(c.camping||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
       camps.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; if(c===curr) o.selected=true; sel.appendChild(o); });
-      sel.onchange=function(){ const affSel=this.parentElement.querySelector('select[data-kind="affaire"]'); if(affSel) fillAffaireSelect(affSel,this.value,''); };
+      sel.onchange=function(){ const affSel = this.parentElement.querySelector('select[data-kind="affaire"]'); if (affSel) fillAffaireSelect(affSel, this.value, ''); };
       return sel;
     }
     function fillAffaireSelect(sel,camping,currentAff){
       const campKey=(camping||'').trim().toLowerCase(); const curAff=(currentAff||'').trim();
       sel.innerHTML='<option value="">--</option>';
       const filtered=campKey?(campAff||[]).filter(o=>String(o.camping||'').trim().toLowerCase()===campKey):(campAff||[]);
-      const affaires=[...new Set(filtered.map(o=>String(o.affaire||'').trim()))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
-      affaires.forEach(a=>{ const op=document.createElement('option'); op.value=a; op.textContent=a; if(a===curAff) op.selected=true; sel.appendChild(op); });
+      const affaires=[...new Set(filtered.map(o=>String(o.affaire||'').trim()))]
+        .filter(Boolean)
+        .sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+      affaires.forEach(a=>{
+        const op=document.createElement('option'); op.value=a; op.textContent=a;
+        if (a === curAff) op.selected = true;
+        sel.appendChild(op);
+      });
     }
     function buildAffaireSelect(camping,currentAff){ const sel=document.createElement('select'); sel.dataset.kind="affaire"; fillAffaireSelect(sel,camping,currentAff); return sel; }
 
@@ -708,7 +704,6 @@
       finally{ if(status) status.textContent=''; }
     }
 
-    /* --- Widgets --- */
     function buildYesNoSelect(val,midi=false){ const isOui=(val||'').trim()==='Oui'; const defaultOui=midi; const ouiSel=isOui||(!isOui&&defaultOui); return `<select class="sel-yn"><option${ouiSel?' selected':''}>Oui</option><option${!ouiSel?' selected':''}>Non</option></select>`; }
     function buildZoneSelect(val){ const zones=["","1","2","3","4","5","Grand déplacement"]; return `<select class="sel-zone">`+zones.map(z=>`<option value="${z}"${z===val?' selected':''}>${z||'--'}</option>`).join('')+`</select>`; }
     function buildTrajetSelect(val){ const opts=["","<3h","3-6h",">6h"]; return `<select class="sel-trajet">`+opts.map(o=>`<option${o===val?' selected':''}>${o||'--'}</option>`).join('')+`</select>`; }
