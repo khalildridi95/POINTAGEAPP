@@ -59,7 +59,6 @@
   </div>
 
   <script>
-    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
@@ -68,7 +67,22 @@
 
     window.onload = function(){
       chargerIdentifiants();
+      // Si déjà connecté, on vérifie le rôle et on redirige vers la page autorisée
+      const saved = getSavedLogin();
+      if (saved) {
+        verifierRoleEtRediriger(saved);
+      }
     };
+
+    function getSavedLogin(){
+      try { return localStorage.getItem('userLogin') || ''; } catch(e){ return ''; }
+    }
+    function saveLogin(u){
+      try { localStorage.setItem('userLogin', u); } catch(e){}
+    }
+    function clearLogin(){
+      try { localStorage.removeItem('userLogin'); } catch(e){}
+    }
 
     async function fetchJSON(url, options){
       const res = await fetch(url, options || {});
@@ -136,14 +150,9 @@
             headers:{"Content-Type":"application/json"},
             body: JSON.stringify({ login })
           }).then(role=>{
-            try{
-              localStorage.setItem('userLogin', login);
-              localStorage.setItem('userRole', role || '');
-            }catch(e){}
+            saveLogin(login);
             stopLoading(true);
-            if(role==='admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
-            else if(role==='compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
-            else window.location.href = "./salarie.html?u="+encodeURIComponent(login);
+            redirigerSelonRole(login, role);
           });
         } else {
           stopLoading(false);
@@ -156,6 +165,24 @@
         if(loginMsg){ loginMsg.textContent='Erreur vérification'; loginMsg.style.display='block'; }
         if(btn) btn.disabled=false;
       });
+    }
+
+    function redirigerSelonRole(login, role){
+      const r = (role||'').toLowerCase();
+      if (r === 'admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
+      else if (r === 'compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
+      else window.location.href = "./salarie.html?u="+encodeURIComponent(login);
+    }
+
+    // Vérification post-login (si utilisateur revient avec un localStorage)
+    function verifierRoleEtRediriger(login){
+      fetchJSON(API_BASE + "/getRoleForLogin", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ login })
+      })
+      .then(role=>{ redirigerSelonRole(login, role); })
+      .catch(()=>{ clearLogin(); });
     }
   </script>
 </body>
