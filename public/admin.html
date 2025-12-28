@@ -57,7 +57,7 @@
     .pill{background:linear-gradient(120deg,#2563eb,#38bdf8);color:#fff;border-radius:12px;padding:6px 8px;font-size:11px;font-weight:700;display:block;margin:4px 0;white-space:normal;word-break:break-word;}
     .pill small{display:block;color:#e0f2fe;font-weight:600;font-size:10px;}
     .pill-actions{display:inline-flex;gap:6px;margin-left:6px;font-size:12px;}
-    .drop-target{border:2px dashed #cbd5e1;min-height:40px;padding:4px;border-radius:6px;}
+    .drop-target{border:2x dashed #cbd5e1;min-height:40px;padding:4px;border-radius:6px;}
     .drag-over{background:#e0f2fe;}
     #historyPanel{position:fixed;left:0;right:0;bottom:60px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px 32px 24px 24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:2000;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;scrollbar-width: var(--scrollbar-size);}
     #historyPanel::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
@@ -257,78 +257,28 @@
   </div>
 
   <script>
-    // ---------------------------
-    // Sécurité front : session + rôle + inactivité
-    // ---------------------------
-    const AUTH_DURATION_MIN = 30;           // durée de session (minutes)
-    const INACTIVITY_MIN    = 30;           // délai d'inactivité avant déconnexion
-    let inactivityTimerId   = null;
-
-    function nowMs(){ return Date.now(); }
-    function refreshSessionExpiry(){
-      const exp = nowMs() + AUTH_DURATION_MIN * 60 * 1000;
-      try { localStorage.setItem('sessionExp', String(exp)); } catch(e){}
-    }
-    function getSession(){
-      try{
-        const token = localStorage.getItem('sessionToken');
-        const role  = localStorage.getItem('userRole');
-        const login = localStorage.getItem('userLogin');
-        const exp   = parseInt(localStorage.getItem('sessionExp') || '0', 10);
-        if(!token || !role || !login) return null;
-        if(exp && exp < nowMs()) return null;
-        return { token, role, login };
-      }catch(e){ return null; }
-    }
-    function requireAuth(roleNeeded='admin'){
-      const sess = getSession();
-      if(!sess){ logout(); return; }
-      if(roleNeeded && (sess.role||'').toLowerCase() !== roleNeeded){
-        alert('Accès refusé (rôle requis: ' + roleNeeded + ')');
-        logout();
+    // --- Sécurité front : redirection si non authentifié ou rôle non admin/compta ---
+    (function enforceAuthGuard(){
+      const urlParams = new URLSearchParams(window.location.search);
+      const loginFromUrl = urlParams.get('u') || '';
+      let storedLogin = '';
+      try { storedLogin = localStorage.getItem('userLogin') || ''; } catch(e){}
+      const userLogin = loginFromUrl || storedLogin;
+      if (!userLogin) {
+        window.location.replace('index.html');
         return;
       }
-      refreshSessionExpiry();
-      startInactivityWatch();
-    }
-    function startInactivityWatch(){
-      clearTimeout(inactivityTimerId);
-      inactivityTimerId = setTimeout(()=>{ alert('Session expirée (inactivité)'); logout(); }, INACTIVITY_MIN*60*1000);
-    }
-    ['mousemove','keydown','touchstart','click'].forEach(ev=>{
-      window.addEventListener(ev, ()=>{ refreshSessionExpiry(); startInactivityWatch(); }, { passive:true });
-    });
+      // Stocke le login pour les prochains chargements
+      try { localStorage.setItem('userLogin', userLogin); } catch(e){}
+    })();
 
-    // ---------------------------
-    // Configuration API
-    // ---------------------------
+    // --- Config ---
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
-    // Insertion du token d'auth dans les appels API
-    function authHeaders(){
-      const sess = getSession();
-      return sess && sess.token ? { 'X-Auth-Token': sess.token } : {};
-    }
-    async function fetchJSON(url, options){
-      const opts = options || {};
-      opts.headers = Object.assign({}, opts.headers || {}, authHeaders(), { "Content-Type":"application/json" });
-      const res = await fetch(url, opts);
-      if(!res.ok){
-        if(res.status === 401 || res.status === 403){ alert('Session expirée ou non autorisée'); logout(); return Promise.reject('unauthorized'); }
-        throw new Error(res.status+" "+res.statusText);
-      }
-      return res.json();
-    }
-    async function apiGet(path){ return fetchJSON(API_BASE+path); }
-    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", body: JSON.stringify(body||{}) }); }
-
-    // ---------------------------
-    // Données et état existants
-    // ---------------------------
     let currentUser = '';
     let employes = [];
     let campAff = [];
@@ -343,15 +293,7 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){
-      try{
-        localStorage.removeItem('userLogin');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('sessionToken');
-        localStorage.removeItem('sessionExp');
-      }catch(e){}
-      window.location.href = 'index.html';
-    }
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -364,8 +306,32 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
+    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
+    async function apiGet(path){ return fetchJSON(API_BASE+path); }
+    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
+
     function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
     function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
+
+    async function ensureAuthenticatedAdmin(){
+      const params = new URLSearchParams(window.location.search);
+      currentUser = params.get('u') || '';
+      if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
+      if (!currentUser) { window.location.replace('index.html'); return false; }
+      try{
+        const role = await apiPost("/getRoleForLogin", { login: currentUser });
+        if (role !== 'admin' && role !== 'compta') {
+          window.location.replace('index.html');
+          return false;
+        }
+        document.getElementById('adminUser').textContent = currentUser || '(?)';
+        return true;
+      }catch(e){
+        console.error("Auth check failed", e);
+        window.location.replace('index.html');
+        return false;
+      }
+    }
 
     function openArchiveModal(){}
     function closeArchiveModal(){}
@@ -373,11 +339,9 @@
     function onClickCleanApp(btn){}
 
     async function initApp(){
-      requireAuth('admin'); // ----> protège l’accès admin
-      const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || '';
-      if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
-      document.getElementById('adminUser').textContent = currentUser || '(?)';
+      const ok = await ensureAuthenticatedAdmin();
+      if (!ok) return;
+
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
 
