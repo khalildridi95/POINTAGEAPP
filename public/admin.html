@@ -258,7 +258,9 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const API_BASE = IS_LOCAL ? 'http://localhost:3000/api' : 'https://pointage-oeax.onrender.com/api';
+  const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000/api"
+    : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
     let currentUser = '';
