@@ -258,9 +258,9 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? "http://localhost:3000/api"
-    : "https://pointage-oeax.onrender.com/api";
+    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+      ? "http://localhost:3000/api"
+      : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
     let currentUser = '';
@@ -277,7 +277,27 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
+    function redirectToLogin(){
+      try{ localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){}
+      window.location.href = 'index.html';
+    }
+    function ensureAuth(){
+      const storedUser = (()=>{ try{return localStorage.getItem('userLogin')||'';}catch(e){return'';} })();
+      const storedRole = (()=>{ try{return localStorage.getItem('userRole')||'';}catch(e){return'';} })();
+      const params = new URLSearchParams(window.location.search);
+      const urlUser = params.get('u') || '';
+      if(!storedUser || !storedRole) redirectToLogin();
+      if(urlUser && urlUser !== storedUser) redirectToLogin();
+      if(!urlUser){
+        window.location.replace(window.location.pathname + '?u=' + encodeURIComponent(storedUser));
+        return false;
+      }
+      if(storedRole !== 'admin') redirectToLogin();
+      currentUser = storedUser;
+      return true;
+    }
+
+    function logout(){ try{ localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -303,9 +323,9 @@
     function onClickCleanApp(btn){}
 
     async function initApp(){
+      if(!ensureAuth()) return;
       const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || '';
-      if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
+      currentUser = params.get('u') || currentUser || '';
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
