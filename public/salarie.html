@@ -7,69 +7,95 @@
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
-      --planning-col-width:220px;
+      --planning-col-width:240px;
       --table-stripe:#f8fafc;--table-hover:#eef2ff;
     }
     html{min-height:100%;overflow-x:hidden;overflow-y:auto;}
     html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#111;}
     body{min-height:100%;margin:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;font-size:16px;}
-
-    .container{width:100%;max-width:900px;margin:0 auto;padding:24px;margin-bottom:120px;box-sizing:border-box;}
+    .container{width:100%;max-width:none;margin:0;padding:24px;margin-bottom:120px;box-sizing:border-box;}
     h2{margin:0 0 20px 0;color:#1976d2;font-size:24px;}
     label{display:block;margin-top:14px;font-size:16px;color:#333;}
-    select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{
-      display:block;width:100%!important;padding:12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;
-    }
-    textarea{min-height:140px;}
-    .card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 8px 22px rgba(16,24,40,0.06);margin-bottom:22px;}
+    select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
+    textarea{min-height:120px;}
+    .card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
     .muted{color:var(--muted);font-size:14px;}
     .actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;}
-    button{background:var(--primary);color:#fff;border:none;padding:12px 16px;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;min-height:38px;}
+    button{background:var(--primary);color:#fff;border:none;padding:12px 16px;border-radius:12px;font-weight:600;cursor:pointer;font-size:16px;min-height:40px;}
     button.secondary{background:#666;}
-    .small{padding:10px 14px;font-size:14px;min-height:34px;}
+    .small{padding:10px 14px;font-size:15px;min-height:36px;}
     .hidden{display:none}
     .error-text{color:#b91c1c;font-size:14px;margin-top:10px;display:none;}
-    .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+    .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:40;padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom));}
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:10px;align-items:center;}
-    .footer-right{color:var(--muted);font-size:13px;}
+    .footer-right{color:var(--muted);font-size:14px;}
 
-    /* Historique : panneau agrandi en bas */
+    /* Historique */
     #historyPanel{
-      position:fixed;left:0;right:0;bottom:80px;max-height:calc(100vh - 80px);
-      background:var(--card);border-radius:16px;padding:20px;box-shadow:0 28px 90px rgba(2,6,23,0.18);
-      overflow:auto;overscroll-behavior:none;display:none;z-index:50;
-      padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:100px;
+      max-height:calc(100vh - 80px);
+      background:var(--card);
+      border-radius:20px;
+      padding:24px;
+      box-shadow:0 36px 120px rgba(2,6,23,0.2);
+      overflow:auto;
+      overscroll-behavior:none;
+      display:none;
+      z-index:50;
+      padding-bottom:calc(32px + env(safe-area-inset-bottom));
+      font-size:12px;
+      touch-action:pan-y;
     }
-    /* Planning : on garde le réglage existant */
+    /* Planning */
     #planningPanel{
-      position:fixed;left:0;right:0;bottom:96px;max-height:calc(100vh - 100px);
-      background:var(--card);border-radius:16px;padding:20px;box-shadow:0 28px 90px rgba(2,6,23,0.18);
-      overflow:auto;overscroll-behavior:none;display:none;z-index:50;
-      padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;
+      position:fixed;left:0;right:0;bottom:120px;
+      max-height:calc(100vh - 100px);
+      background:var(--card);
+      border-radius:20px;
+      padding:24px;
+      box-shadow:0 36px 120px rgba(2,6,23,0.2);
+      overflow:auto;
+      overscroll-behavior:none;
+      display:none;z-index:50;
+      padding-bottom:calc(28px + env(safe-area-inset-bottom));
+      font-size:12px;
+      touch-action:pan-y;
     }
 
-    .h-scrollbar{position:sticky;top:0;z-index:5;height:14px;background:#f1f5f9;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable both-edges;}
+    .h-scrollbar{
+      position:sticky;
+      top:0;
+      z-index:5;
+      height:14px;
+      background:#f1f5f9;
+      overflow-x:auto;
+      overflow-y:hidden;
+      scrollbar-gutter:stable both-edges;
+    }
     .h-scrollbar-inner{height:1px;}
-    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:180px;}
-    table{min-width:100%;border-collapse:collapse;font-size:14px;width:auto;padding-bottom:70px;}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:200px;}
+    table{min-width: 100%;border-collapse:collapse;font-size:16px;width:auto;padding-bottom:80px;}
     th,td{border:10px solid #eee;padding:12px;text-align:left}
     tbody tr:nth-child(odd){background:#ffffff;}
     tbody tr:nth-child(even){background:#e0f2ff;}
     th{background:#fbfbfb;position:sticky;top:0}
-    .entry-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
-    .entry-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
-    .chantier-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
-    .deplacement-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
-    .interim-block{border:2px dashed #cbd5e1;padding:12px;border-radius:10px;margin-top:12px;background:#fff;}
-    .interim-actions{display:flex;gap:10px;margin-top:12px;align-items:center;}
-    .msg{margin-top:12px;color:green;font-size:14px}
-    .inline{display:inline-block;margin-right:10px;}
-    .status-text{font-weight:700;font-size:15px;margin-left:10px;}
+    .entry-block{border:2px dashed #ddd;padding:14px;border-radius:10px;margin-top:14px;}
+    .entry-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+    .chantier-block{border:2px dashed #ddd;padding:14px;border-radius:10px;margin-top:14px;}
+    .deplacement-block{border:2px dashed #ddd;padding:14px;border-radius:10px;margin-top:14px;}
+    .interim-block{border:2px dashed #cbd5e1;padding:14px;border-radius:10px;margin-top:14px;background:#fff;}
+    .interim-actions{display:flex;gap:10px;margin-top:14px;align-items:center;}
+    .msg{margin-top:14px;color:green;font-size:16px}
+    .inline{display:inline-block;margin-right:12px;}
+    .status-text{font-weight:700;font-size:18px;margin-left:10px;}
     .status-green{color:#059669;}
     .status-red{color:#b91c1c;}
 
-    /* Planning style (aligné sur admin) */
+    /* Planning table */
     .planning-container{
       position: relative;
       max-height:70vh;
@@ -83,7 +109,7 @@
       border-collapse:collapse;
       width:max-content;
       min-width:200px;
-      font-size:14px;
+      font-size:16px;
     }
     .planning-table th,
     .planning-table td{
@@ -123,7 +149,7 @@
       color:#fff;
       border-radius:10px;
       padding:8px 10px;
-      font-size:12px;
+      font-size:14px;
       font-weight:700;
       display:block;
       margin:4px 0;
@@ -134,11 +160,11 @@
       display:block;
       color:#e0f2fe;
       font-weight:600;
-      font-size:11px;
+      font-size:12px;
     }
     .today-col{background:#fff7d6 !important;}
 
-    /* Surbrillance des campings/affaires déjà affectés au salarié (desktop + fallback iOS via préfixe) */
+    /* Surbrillance campings/affaires */
     select option.opt-assigned-camp {
       background:#fff3c4;
       color:#92400e;
@@ -155,7 +181,7 @@
 <body>
   <div class="container">
     <div style="text-align:center;margin-bottom:20px;">
-      <img id="appLogo" alt="appLogo" style="height:140px;max-width:100%;display:none;">
+      <img id="appLogo" alt="appLogo" style="height:120px;max-width:100%;display:none;">
     </div>
 
     <div id="page-form" class="card" style="padding-bottom:24px">
@@ -179,6 +205,7 @@
       <div id="form-sections" class="hidden">
         <div id="bloc-interimaire" class="hidden">
           <div id="interimContainer" style="margin-top:14px"></div>
+
           <div class="interim-actions" style="margin-top:14px;">
             <button class="small" onclick="ajouterInterimaire()">Ajouter intérimaire</button>
           </div>
@@ -187,14 +214,14 @@
         <div id="entries-section" class="hidden">
           <div id="entriesContainer"></div>
           <div class="entry-actions">
-            <div id="loadingIndicator" style="display:none;color:var(--muted);font-size:13px;margin-right:12px;">Ajout en cours...</div>
+            <div id="loadingIndicator" style="display:none;color:var(--muted);font-size:14px;margin-right:10px;">Ajout en cours...</div>
             <button class="small" onclick="ajouterChantier()">Ajouter un chantier</button>
             <button class="small" onclick="ajouterDeplacement()">Ajouter déplacement</button>
           </div>
           <div id="err_entries" class="error-text"></div>
         </div>
 
-        <div class="actions" style="margin-top:18px;">
+        <div class="actions" style="margin-top:16px;">
           <button id="btnValider" onclick="valider()" class="small">Valider</button>
           <span id="transferStatus" class="status-text"></span>
           <div class="msg" id="msg"></div>
@@ -204,7 +231,7 @@
 
     <!-- Mes tâches planifiées -->
     <div id="mes-taches-card" class="card">
-      <h2 style="margin-bottom:14px;">Mes tâches planifiées</h2>
+      <h2 style="margin-bottom:12px;">Mes tâches planifiées</h2>
       <div class="muted" style="margin-bottom:8px;">Tâches du jour</div>
       <div id="tachesToday" class="muted" style="margin-bottom:14px;">Chargement...</div>
 
@@ -223,16 +250,17 @@
   </div>
 
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="margin-top:60px;">
+    <div id="historyHeader" style="margin-top: 40px;">
       <strong id="historyTitle" style="font-size:22px;">Historique</strong>
+
       <div>
-        <button id="btnExportPDF" onclick="telechargerPDF()" style="padding:6px 10px; font-size:14px; min-height:32px;">Exporter PDF</button>
-        <button class="secondary" onclick="fermerHistorique()" style="padding:6px 10px; font-size:14px; min-height:32px;">Fermer</button>
+        <button id="btnExportPDF" onclick="telechargerPDF()" style="padding:8px 10px; font-size:14px; min-height:32px;">Exporter PDF</button>
+        <button class="secondary" onclick="fermerHistorique()" style="padding:8px 10px; font-size:14px; min-height:32px;">Fermer</button>
       </div>
     </div>
 
     <!-- Filtres historique -->
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
       <label style="font-size:14px;">De
         <input type="date" id="histDateFrom" style="font-size:14px;padding:8px;">
       </label>
@@ -240,33 +268,33 @@
         <input type="date" id="histDateTo" style="font-size:14px;padding:8px;">
       </label>
       <label style="font-size:14px;">Salarié
-        <select id="histSalarie" style="font-size:14px;padding:8px;min-width:200px;">
+        <select id="histSalarie" style="font-size:14px;padding:8px;min-width:180px;">
           <option value="">Tous</option>
         </select>
       </label>
       <label style="font-size:14px;">Camping
-        <select id="histCamping" style="font-size:14px;padding:8px;min-width:200px;">
+        <select id="histCamping" style="font-size:14px;padding:8px;min-width:180px;">
           <option value="">Tous</option>
         </select>
       </label>
-      <button onclick="applyHistoryFilters()" class="small" style="font-size:14px;min-height:34px;">Appliquer</button>
-      <button onclick="callHistorique(true)" class="secondary small" style="font-size:14px;min-height:34px;">Actualiser</button>
+      <button onclick="applyHistoryFilters()" class="small" style="font-size:14px;min-height:32px;">Appliquer</button>
+      <button onclick="callHistorique(true)" class="secondary small" style="font-size:14px;min-height:32px;">Actualiser</button>
     </div>
 
     <div id="historyContent" style="padding-top: 12px;"><div class="muted">Clique sur Appliquer pour charger l'historique.</div></div>
   </div>
 
-  <!-- Planning général (vue tableau alignée admin) -->
+  <!-- Planning général -->
   <div id="planningPanel" aria-hidden="true">
-    <div id="planningHeader" style="margin-top:60px;">
+    <div id="planningHeader" style="margin-top: 40px;">
       <strong id="planningTitle" style="font-size:22px;">Planning de l'équipe</strong>
       <div>
-        <button class="small" onclick="actualiserPlanning()" style="padding:6px 10px; font-size:14px; min-height:32px;">Actualiser</button>
-        <button class="secondary" onclick="fermerPlanning()" style="padding:6px 10px; font-size:14px; min-height:32px;">Fermer</button>
+        <button class="small" onclick="actualiserPlanning()" style="padding:8px 10px; font-size:14px; min-height:32px;">Actualiser</button>
+        <button class="secondary" onclick="fermerPlanning()" style="padding:8px 10px; font-size:14px; min-height:32px;">Fermer</button>
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
       <label style="font-size:14px;">Du
         <input type="date" id="planDateFrom" style="font-size:14px;padding:8px;">
       </label>
@@ -274,50 +302,50 @@
         <input type="date" id="planDateTo" style="font-size:14px;padding:8px;">
       </label>
       <label style="font-size:14px;">Salarié
-        <select id="planSalarie" style="font-size:14px;padding:8px;min-width:200px;">
+        <select id="planSalarie" style="font-size:14px;padding:8px;min-width:180px;">
           <option value="">Tous</option>
         </select>
       </label>
-      <button onclick="actualiserPlanning()" class="small" style="font-size:14px;min-height:34px;">Appliquer</button>
-      <button onclick="actualiserPlanning()" class="secondary small" style="font-size:14px;min-height:34px;">Actualiser</button>
+      <button onclick="actualiserPlanning()" class="small" style="font-size:14px;min-height:32px;">Appliquer</button>
+      <button onclick="actualiserPlanning()" class="secondary small" style="font-size:14px;min-height:32px;">Actualiser</button>
     </div>
 
     <div id="planningContent" style="padding-top:12px;"><div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div></div>
   </div>
 
-  <!-- Nouveau panneau Pointages validés -->
-  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:120px;max-height:calc(100vh - 140px);background:#fff;border-radius:16px;padding:20px;box-shadow:0 28px 90px rgba(2,6,23,0.18);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+  <!-- Pointages validés -->
+  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:120px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(28px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <strong style="font-size:22px;">Mes pointages validés</strong>
       <div>
-        <button class="small" onclick="actualiserValides()" style="padding:6px 10px; font-size:14px; min-height:32px;">Actualiser</button>
-        <button class="small" onclick="exportValidesPDF()" style="padding:6px 10px; font-size:14px; min-height:32px;">Exporter PDF</button>
-        <button class="secondary" onclick="fermerValides()" style="padding:6px 10px; font-size:14px; min-height:32px;">Fermer</button>
+        <button class="small" onclick="actualiserValides()" style="padding:8px 10px; font-size:14px; min-height:32px;">Actualiser</button>
+        <button class="small" onclick="exportValidesPDF()" style="padding:8px 10px; font-size:14px; min-height:32px;">Exporter PDF</button>
+        <button class="secondary" onclick="fermerValides()" style="padding:8px 10px; font-size:14px; min-height:32px;">Fermer</button>
       </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
       <label style="font-size:14px;">De
         <input type="date" id="valDateFrom" style="font-size:14px;padding:8px;">
       </label>
       <label style="font-size:14px;">À
         <input type="date" id="valDateTo" style="font-size:14px;padding:8px;">
       </label>
-      <button onclick="actualiserValides()" class="small" style="font-size:14px;min-height:34px;">Appliquer</button>
-      <button onclick="resetValidesFilters()" class="secondary small" style="font-size:14px;min-height:34px;">Actualiser</button>
+      <button onclick="actualiserValides()" class="small" style="font-size:14px;min-height:32px;">Appliquer</button>
+      <button onclick="resetValidesFilters()" class="secondary small" style="font-size:14px;min-height:32px;">Actualiser</button>
     </div>
 
-    <div id="valStatus" class="muted" style="margin-bottom:10px;">Choisissez des dates puis cliquez sur Appliquer.</div>
-    <div id="valContent" class="table-wrap" style="overflow:auto;max-height:60vh;">
+    <div id="valStatus" class="muted" style="margin-bottom:8px;">Choisissez des dates puis cliquez sur Appliquer.</div>
+    <div id="valContent" class="table-wrap" style="overflow:auto;max-height:65vh;">
       <div class="muted">Aucune donnée.</div>
     </div>
   </div>
 
   <div id="fixedFooter" class="fixed-footer hidden" aria-hidden="true">
     <div class="footer-left">
-      <button id="btnShowHistory" onclick="afficherHistorique()" style="font-size:14px;padding:8px 12px;min-height:32px;">Afficher l'historique</button>
-      <button id="btnShowPlanning" onclick="afficherPlanning()" style="font-size:14px;padding:8px 12px;min-height:32px;">Afficher le planning</button>
-      <button id="btnShowValides" onclick="afficherValides()" style="font-size:14px;padding:8px 12px;min-height:32px;">Pointages validés</button>
+      <button id="btnShowHistory" onclick="afficherHistorique()" style="font-size:14px;padding:10px 12px;min-height:36px;">Afficher l'historique</button>
+      <button id="btnShowPlanning" onclick="afficherPlanning()" style="font-size:14px;padding:10px 12px;min-height:36px;">Afficher le planning</button>
+      <button id="btnShowValides" onclick="afficherValides()" style="font-size:14px;padding:10px 12px;min-height:36px;">Pointages validés</button>
     </div>
     <div class="footer-right" id="appCredit">PCELEC</div>
   </div>
@@ -325,7 +353,7 @@
   <template id="interimTpl">
     <div class="interim-block">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <strong class="interim-title" style="font-size:15px;">Intérimaire</strong>
+        <strong class="interim-title">Intérimaire</strong>
         <button class="small" onclick="supprimerInterimaire(this)">Supprimer</button>
       </div>
       <label>Nom <input type="text" class="it_nom"></label>
@@ -349,8 +377,8 @@
 
   <template id="chantierTpl">
     <div class="chantier-block">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <strong class="chantier-title" style="font-size:15px;">Chantier</strong>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong class="chantier-title">Chantier</strong>
         <button class="small" onclick="supprimerEntry(this)">Supprimer</button>
       </div>
       <label>Camping
@@ -378,7 +406,7 @@
       </label>
       <div class="error-text mc_err_fin" style="display:none;"></div>
 
-      <div style="margin-top:12px;">
+      <div style="margin-top:10px;">
         <button class="small" onclick="ajouterPause(this)">Ajouter pause</button>
       </div>
     </div>
@@ -386,8 +414,8 @@
 
   <template id="deplacementTpl">
     <div class="deplacement-block">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <strong class="deplacement-title" style="font-size:15px;">Déplacement</strong>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong class="deplacement-title">Déplacement</strong>
         <button class="small" onclick="supprimerEntry(this)">Supprimer</button>
       </div>
       <label>Type:
@@ -441,12 +469,29 @@
     let planningEmployees = [];
     let cachedValides = [];
 
-    // Surbrillance sets + détection iOS
     let assignedCampings = new Set();
     let assignedAffaires = new Map();
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
+    function fmtDateDisplay(isoStr){
+      if(!isoStr) return '';
+      const parts = isoStr.split('-');
+      if(parts.length===3){
+        const [y,m,d]=parts;
+        return `${d}/${m}/${y}`;
+      }
+      return isoStr;
+    }
+    function fmtHHMM(v){
+      if(v==null) return '';
+      const s=String(v).trim();
+      const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
+      return s;
+    }
+    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+    function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
 
     window.onload = function(){
       const params = new URLSearchParams(window.location.search);
@@ -516,7 +561,6 @@
       if (dt) dt.value = iso(today);
     }
 
-    // --- Historique : helpers pour date du jour par défaut ---
     function setDefaultHistoryToday(){
       const today = new Date().toISOString().slice(0,10);
       const df = document.getElementById('histDateFrom');
@@ -578,26 +622,7 @@
       }).getMatriculeForName(currentUser);
     }
 
-    function fmtDateDisplay(isoStr){
-      if(!isoStr) return '';
-      const parts = isoStr.split('-');
-      if(parts.length===3){
-        const [y,m,d]=parts;
-        return `${d}/${m}/${y}`;
-      }
-      return isoStr;
-    }
-    function fmtHHMM(v){
-      if(v==null) return '';
-      const s=String(v).trim();
-      const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
-      return s;
-    }
-    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
-    function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
-
-    /* ---------- MES TÂCHES : Aujourd'hui + filtré ---------- */
+    /* ---------- MES TÂCHES ---------- */
     function chargerTachesAujourdHui(){
       const todayIso = new Date().toISOString().slice(0,10);
       const key = (currentMatricule || currentUser || '').trim();
@@ -720,7 +745,7 @@
         const ta=(a.tache||'').toLowerCase(), tb=(b.tache||'').toLowerCase();
         return ta.localeCompare(tb,'fr',{sensitivity:'base'});
       });
-      let html = '<ul style="padding-left:18px;font-size:15px;">';
+      let html = '<ul style="padding-left:18px;font-size:16px;">';
       sorted.forEach(t=>{
         html += `<li><b>${escapeHtml(t.camping||'')}</b> / ${escapeHtml(t.affaire||'')} — ${escapeHtml(t.tache||'')} ${t.commentaire?('(' + escapeHtml(t.commentaire) + ')'):''}</li>`;
       });
@@ -757,8 +782,6 @@
       html += '</tbody></table>';
       box.innerHTML = html;
     }
-    /* ---------- fin MES TÂCHES ---------- */
-
     /* ---------- Pointages validés ---------- */
     function afficherValides(){
       const meta = document.querySelector('meta[name="viewport"]');
@@ -853,12 +876,12 @@
         await ensureJsPDF();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l','pt','a4');
-        doc.setFontSize(12);
-        doc.text('Pointages validés', 16, 22);
-        doc.setFontSize(10);
-        doc.text(periodText, 16, 38);
-        doc.text(salText, 16, 52);
-        doc.text(genText, 16, 66);
+        doc.setFontSize(14);
+        doc.text('Pointages validés', 16, 24);
+        doc.setFontSize(11);
+        doc.text(periodText, 16, 42);
+        doc.text(salText, 16, 58);
+        doc.text(genText, 16, 74);
 
         const head = [[
           'Date','Travail','Déplacement','Panier midi','Panier soir','Zone','Forfait trajet','HSup','HNuit','Découchés','WE','Validé par','Validé le','Commentaire'
@@ -883,10 +906,10 @@
         doc.autoTable({
           head,
           body,
-          styles:{ fontSize:7, cellPadding:3 },
+          styles:{ fontSize:8, cellPadding:4 },
           headStyles:{ fillColor:[37,99,235], textColor:255 },
           alternateRowStyles:{ fillColor:[240,245,255] },
-          margin:{ top:80, bottom:20, left:12, right:12 }
+          margin:{ top:90, bottom:24, left:16, right:16 }
         });
 
         doc.save('pointages-valides.pdf');
@@ -1056,8 +1079,8 @@
     }
 
     function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); document.getElementById('msg').textContent=''; document.getElementById('transferStatus').textContent=''; document.getElementById('transferStatus').className='status-text'; document.getElementById('btnValider').disabled = false; }
-    function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
-    function showMsg(text){ const el=document.getElementById('msg'); el.textContent=text || ''; if(!text) el.style.display='none'; else el.style.display='block'; setTimeout(()=>{ el.textContent=''; },4000); }
+    function showError(id, msg){ const el = document.getElementById('err_' + id); if(!el) return; el.textContent = msg||''; el.style.display = msg ? 'block' : 'none'; }
+    function showMsg(text){ const el = document.getElementById('msg'); el.textContent = text || ''; if(!text) el.style.display='none'; else el.style.display='block'; setTimeout(()=>{ el.textContent=''; },4000); }
 
     function setTransferStatus(text, ok){
       const el = document.getElementById('transferStatus');
@@ -1275,7 +1298,7 @@
         })
         .withFailureHandler(function(err){
           cachedHistory=null;
-          if(renderNow) renderHistory([]);
+          if(renderNow) renderHistory([]); 
           showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
           setTimeout(() => showError('global', ''), 5000);
         })
@@ -1412,7 +1435,7 @@
       for(let i=1;i<data.length;i++){
         const cells = hasRowIdx ? data[i].slice(0,-1) : data[i];
         html+='<tr>';
-        cells.forEach(c=>html+='<td>'+escapeHtml(c||'')+'</td>');
+        cells.forEach(c=>html+='<td>'+escapeHtml(fmtHHMM(c)||'')+'</td>');
         html+='</tr>';
       }
       html+='</tbody></table><div style="height:200px;"></div></div>';
@@ -1459,21 +1482,21 @@
         const genDate = new Date();
         const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
 
-        doc.setFontSize(12);
-        doc.text('Rapport Pointages', 16, 22);
-        doc.setFontSize(10);
-        doc.text(periodText, 16, 38);
-        doc.text(salText, 16, 52);
-        doc.text(campText, 16, 66);
-        doc.text(genText, 16, 80);
+        doc.setFontSize(14);
+        doc.text('Rapport Pointages', 16, 24);
+        doc.setFontSize(11);
+        doc.text(periodText, 16, 42);
+        doc.text(salText, 16, 58);
+        doc.text(campText, 16, 74);
+        doc.text(genText, 16, 90);
 
         doc.autoTable({
           head: [headForPdf.map(h=>h||'')],
           body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
-          styles:{ fontSize:7, cellPadding:3 },
+          styles:{ fontSize:8, cellPadding:4 },
           headStyles:{ fillColor:[37,99,235], textColor:255 },
           alternateRowStyles:{ fillColor:[240,245,255] },
-          margin:{ top:90, bottom:16, left:12, right:12 }
+          margin:{ top:110, bottom:24, left:16, right:16 }
         });
 
         doc.save('historique_pointages.pdf');
@@ -1513,6 +1536,7 @@
       });
     }
 
+    /* Planning affichage */
     function afficherPlanning(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -1530,14 +1554,21 @@
       const dt = document.getElementById('planDateTo').value || '';
       const content = document.getElementById('planningContent');
       if (content) content.innerHTML = '<div class="muted">Chargement...</div>';
-      const onSuccess = (list) => { cachedPlanning = list || []; renderPlanningGrid(cachedPlanning); };
-      const onError = (err) => { console.error(err); if (content) content.innerHTML = '<div class="muted">Erreur de chargement.</div>'; };
-
-      if (USE_LOCAL){
-        const today = new Date().toISOString().slice(0,10);
-        apiPost('/getPlanning', { startIso: df || today, endIso: dt || today }).then(onSuccess).catch(onError);
-      }else{
-        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
+      try{
+        let list = [];
+        if (USE_LOCAL){
+          const today = new Date().toISOString().slice(0,10);
+          list = await apiPost('/getPlanning', { startIso: df || today, endIso: dt || today });
+        }else{
+          list = await new Promise((resolve,reject)=>{
+            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
+          });
+        }
+        cachedPlanning = list || [];
+        renderPlanningGrid(cachedPlanning);
+      }catch(err){
+        console.error(err);
+        if (content) content.innerHTML = '<div class="muted">Erreur de chargement.</div>';
       }
     }
 
@@ -1630,7 +1661,9 @@
         .replace(/'/g,'&#39;');
     }
 
-    window.logout = function(){ try { localStorage.removeItem('userLogin'); } catch(e){} window.location.href = 'INDEX.html'; };
+    window.logout = logout;
+    function logout(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'INDEX.html'; }
+
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
