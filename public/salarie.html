@@ -7,61 +7,61 @@
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
-      --planning-col-width:240px;
+      --planning-col-width:80px; /* réduit ~1/3 */
       --table-stripe:#f8fafc;--table-hover:#eef2ff;
     }
     html{min-height:100%;overflow-x:hidden;overflow-y:auto;}
     html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#111;}
     body{min-height:100%;margin:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;font-size:16px;}
-    .container{width:100%;max-width:none;margin:0;padding:24px;margin-bottom:120px;box-sizing:border-box;}
-    h2{margin:0 0 20px 0;color:#1976d2;font-size:24px;}
+    .container{width:100%;max-width:none;margin:0;padding:20px;margin-bottom:120px;box-sizing:border-box;}
+    h2{margin:0 0 20px 0;color:#1976d2;font-size:22px;}
     label{display:block;margin-top:14px;font-size:16px;color:#333;}
     select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:16px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
     textarea{min-height:120px;}
-    .card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
+    .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
     .muted{color:var(--muted);font-size:14px;}
-    .actions{display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;}
-    button{background:var(--primary);color:#fff;border:none;padding:12px 16px;border-radius:12px;font-weight:600;cursor:pointer;font-size:16px;min-height:40px;}
+    .actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+    button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:16px;min-height:36px;}
     button.secondary{background:#666;}
-    .small{padding:10px 14px;font-size:15px;min-height:36px;}
+    .small{padding:8px 12px;font-size:15px;min-height:32px;}
     .hidden{display:none}
     .error-text{color:#b91c1c;font-size:14px;margin-top:10px;display:none;}
-    .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;z-index:40;padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom));}
+    .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);}
     .fixed-footer.hidden{display:none}
-    .footer-left{display:flex;gap:10px;align-items:center;}
-    .footer-right{color:var(--muted);font-size:14px;}
+    .footer-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Historique */
+    /* Historique : panneau un peu plus bas et plus compact */
     #historyPanel{
       position:fixed;
       left:0;
       right:0;
-      bottom:100px;
-      max-height:calc(100vh - 80px);
+      bottom:60px;
+      max-height:calc(100vh - 140px);
       background:var(--card);
-      border-radius:20px;
-      padding:24px;
-      box-shadow:0 36px 120px rgba(2,6,23,0.2);
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:auto;
       overscroll-behavior:none;
       display:none;
       z-index:50;
-      padding-bottom:calc(32px + env(safe-area-inset-bottom));
+      padding-bottom:calc(24px + env(safe-area-inset-bottom));
       font-size:12px;
       touch-action:pan-y;
     }
-    /* Planning */
+    /* Planning : abaissement léger */
     #planningPanel{
-      position:fixed;left:0;right:0;bottom:120px;
-      max-height:calc(100vh - 100px);
+      position:fixed;left:0;right:0;bottom:80px;
+      max-height:calc(100vh - 140px);
       background:var(--card);
-      border-radius:20px;
-      padding:24px;
-      box-shadow:0 36px 120px rgba(2,6,23,0.2);
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:auto;
       overscroll-behavior:none;
       display:none;z-index:50;
-      padding-bottom:calc(28px + env(safe-area-inset-bottom));
+      padding-bottom:calc(24px + env(safe-area-inset-bottom));
       font-size:12px;
       touch-action:pan-y;
     }
@@ -70,32 +70,32 @@
       position:sticky;
       top:0;
       z-index:5;
-      height:14px;
+      height:12px;
       background:#f1f5f9;
       overflow-x:auto;
       overflow-y:hidden;
       scrollbar-gutter:stable both-edges;
     }
     .h-scrollbar-inner{height:1px;}
-    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:200px;}
-    table{min-width: 100%;border-collapse:collapse;font-size:16px;width:auto;padding-bottom:80px;}
-    th,td{border:10px solid #eee;padding:12px;text-align:left}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:160px;}
+    table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;padding-bottom:60px;}
+    th,td{border:8px solid #eee;padding:10px;text-align:left}
     tbody tr:nth-child(odd){background:#ffffff;}
     tbody tr:nth-child(even){background:#e0f2ff;}
     th{background:#fbfbfb;position:sticky;top:0}
-    .entry-block{border:2px dashed #ddd;padding:14px;border-radius:10px;margin-top:14px;}
-    .entry-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
-    .chantier-block{border:2px dashed #ddd;padding:14px;border-radius:10px;margin-top:14px;}
-    .deplacement-block{border:2px dashed #ddd;padding:14px;border-radius:10px;margin-top:14px;}
-    .interim-block{border:2px dashed #cbd5e1;padding:14px;border-radius:10px;margin-top:14px;background:#fff;}
-    .interim-actions{display:flex;gap:10px;margin-top:14px;align-items:center;}
-    .msg{margin-top:14px;color:green;font-size:16px}
-    .inline{display:inline-block;margin-right:12px;}
-    .status-text{font-weight:700;font-size:18px;margin-left:10px;}
+    .entry-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
+    .entry-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+    .chantier-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
+    .deplacement-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
+    .interim-block{border:2px dashed #cbd5e1;padding:12px;border-radius:10px;margin-top:12px;background:#fff;}
+    .interim-actions{display:flex;gap:10px;margin-top:12px;align-items:center;}
+    .msg{margin-top:12px;color:green;font-size:14px}
+    .inline{display:inline-block;margin-right:10px;}
+    .status-text{font-weight:700;font-size:14px;margin-left:8px;}
     .status-green{color:#059669;}
     .status-red{color:#b91c1c;}
 
-    /* Planning table */
+    /* Planning style */
     .planning-container{
       position: relative;
       max-height:70vh;
@@ -109,12 +109,12 @@
       border-collapse:collapse;
       width:max-content;
       min-width:200px;
-      font-size:16px;
+      font-size:12px;
     }
     .planning-table th,
     .planning-table td{
       box-sizing:border-box;
-      padding:10px 8px;
+      padding:8px 6px;
       text-align:left;
       border:1px solid #eee;
       min-width:var(--planning-col-width);
@@ -148,11 +148,11 @@
       background:linear-gradient(120deg,#2563eb,#38bdf8);
       color:#fff;
       border-radius:10px;
-      padding:8px 10px;
-      font-size:14px;
+      padding:6px 8px;
+      font-size:11px;
       font-weight:700;
       display:block;
-      margin:4px 0;
+      margin:3px 0;
       white-space:normal;
       word-break:break-word;
     }
@@ -160,11 +160,11 @@
       display:block;
       color:#e0f2fe;
       font-weight:600;
-      font-size:12px;
+      font-size:10px;
     }
     .today-col{background:#fff7d6 !important;}
 
-    /* Surbrillance campings/affaires */
+    /* Surbrillance camp/affectations */
     select option.opt-assigned-camp {
       background:#fff3c4;
       color:#92400e;
@@ -181,7 +181,7 @@
 <body>
   <div class="container">
     <div style="text-align:center;margin-bottom:20px;">
-      <img id="appLogo" alt="appLogo" style="height:120px;max-width:100%;display:none;">
+      <img id="appLogo" alt="appLogo" style="height:140px;max-width:100%;display:none;">
     </div>
 
     <div id="page-form" class="card" style="padding-bottom:24px">
@@ -189,7 +189,7 @@
       <div class="muted">
         Utilisateur connecté : <b id="userLabel"></b>
         <br><span id="matriculeDisplay" class="muted"></span>
-        <span id="tachesStatus" class="status-text status-green" style="margin-left:10px;"></span>
+        <span id="tachesStatus" class="status-text status-green" style="margin-left:8px;"></span>
       </div>
       <div id="err_global" class="error-text"></div>
 
@@ -214,7 +214,7 @@
         <div id="entries-section" class="hidden">
           <div id="entriesContainer"></div>
           <div class="entry-actions">
-            <div id="loadingIndicator" style="display:none;color:var(--muted);font-size:14px;margin-right:10px;">Ajout en cours...</div>
+            <div id="loadingIndicator" style="display:none;color:var(--muted);font-size:13px;margin-right:10px;">Ajout en cours...</div>
             <button class="small" onclick="ajouterChantier()">Ajouter un chantier</button>
             <button class="small" onclick="ajouterDeplacement()">Ajouter déplacement</button>
           </div>
@@ -229,7 +229,6 @@
       </div>
     </div>
 
-    <!-- Mes tâches planifiées -->
     <div id="mes-taches-card" class="card">
       <h2 style="margin-bottom:12px;">Mes tâches planifiées</h2>
       <div class="muted" style="margin-bottom:8px;">Tâches du jour</div>
@@ -250,106 +249,103 @@
   </div>
 
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="margin-top: 40px;">
-      <strong id="historyTitle" style="font-size:22px;">Historique</strong>
-
+    <div id="historyHeader" style="margin-top:40px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <strong id="historyTitle" style="font-size:18px;">Historique</strong>
       <div>
-        <button id="btnExportPDF" onclick="telechargerPDF()" style="padding:8px 10px; font-size:14px; min-height:32px;">Exporter PDF</button>
-        <button class="secondary" onclick="fermerHistorique()" style="padding:8px 10px; font-size:14px; min-height:32px;">Fermer</button>
+        <button id="btnExportPDF" onclick="telechargerPDF()" style="padding:6px 10px; font-size:13px; min-height:30px;">Exporter PDF</button>
+        <button class="secondary" onclick="fermerHistorique()" style="padding:6px 10px; font-size:13px; min-height:30px;">Fermer</button>
       </div>
     </div>
 
-    <!-- Filtres historique -->
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
-      <label style="font-size:14px;">De
-        <input type="date" id="histDateFrom" style="font-size:14px;padding:8px;">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+      <label style="font-size:13px;">De
+        <input type="date" id="histDateFrom" style="font-size:13px;padding:8px;">
       </label>
-      <label style="font-size:14px;">À
-        <input type="date" id="histDateTo" style="font-size:14px;padding:8px;">
+      <label style="font-size:13px;">À
+        <input type="date" id="histDateTo" style="font-size:13px;padding:8px;">
       </label>
-      <label style="font-size:14px;">Salarié
-        <select id="histSalarie" style="font-size:14px;padding:8px;min-width:180px;">
+      <label style="font-size:13px;">Salarié
+        <select id="histSalarie" style="font-size:13px;padding:8px;min-width:180px;">
           <option value="">Tous</option>
         </select>
       </label>
-      <label style="font-size:14px;">Camping
-        <select id="histCamping" style="font-size:14px;padding:8px;min-width:180px;">
+      <label style="font-size:13px;">Camping
+        <select id="histCamping" style="font-size:13px;padding:8px;min-width:180px;">
           <option value="">Tous</option>
         </select>
       </label>
-      <button onclick="applyHistoryFilters()" class="small" style="font-size:14px;min-height:32px;">Appliquer</button>
-      <button onclick="callHistorique(true)" class="secondary small" style="font-size:14px;min-height:32px;">Actualiser</button>
+      <button onclick="applyHistoryFilters()" class="small" style="font-size:13px;min-height:30px;">Appliquer</button>
+      <button onclick="callHistorique(true)" class="secondary small" style="font-size:13px;min-height:30px;">Actualiser</button>
     </div>
 
-    <div id="historyContent" style="padding-top: 12px;"><div class="muted">Clique sur Appliquer pour charger l'historique.</div></div>
+    <div id="historyContent" style="padding-top: 10px;"><div class="muted">Chargement...</div></div>
   </div>
 
-  <!-- Planning général -->
   <div id="planningPanel" aria-hidden="true">
-    <div id="planningHeader" style="margin-top: 40px;">
-      <strong id="planningTitle" style="font-size:22px;">Planning de l'équipe</strong>
+    <div id="planningHeader" style="margin-top:40px;display:flex;justify-content:space-between;align-items:center;">
+      <strong id="planningTitle" style="font-size:18px;">Planning de l'équipe</strong>
       <div>
-        <button class="small" onclick="actualiserPlanning()" style="padding:8px 10px; font-size:14px; min-height:32px;">Actualiser</button>
-        <button class="secondary" onclick="fermerPlanning()" style="padding:8px 10px; font-size:14px; min-height:32px;">Fermer</button>
+        <button class="small" onclick="actualiserPlanning()" style="padding:6px 10px; font-size:13px; min-height:30px;">Actualiser</button>
+        <button class="secondary" onclick="fermerPlanning()" style="padding:6px 10px; font-size:13px; min-height:30px;">Fermer</button>
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
-      <label style="font-size:14px;">Du
-        <input type="date" id="planDateFrom" style="font-size:14px;padding:8px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+      <label style="font-size:13px;">Du
+        <input type="date" id="planDateFrom" style="font-size:13px;padding:8px;">
       </label>
-      <label style="font-size:14px;">Au
-        <input type="date" id="planDateTo" style="font-size:14px;padding:8px;">
+      <label style="font-size:13px;">Au
+        <input type="date" id="planDateTo" style="font-size:13px;padding:8px;">
       </label>
-      <label style="font-size:14px;">Salarié
-        <select id="planSalarie" style="font-size:14px;padding:8px;min-width:180px;">
+      <label style="font-size:13px;">Salarié
+        <select id="planSalarie" style="font-size:13px;padding:8px;min-width:180px;">
           <option value="">Tous</option>
         </select>
       </label>
-      <button onclick="actualiserPlanning()" class="small" style="font-size:14px;min-height:32px;">Appliquer</button>
-      <button onclick="actualiserPlanning()" class="secondary small" style="font-size:14px;min-height:32px;">Actualiser</button>
+      <button onclick="actualiserPlanning()" class="small" style="font-size:13px;min-height:30px;">Appliquer</button>
+      <button onclick="actualiserPlanning()" class="secondary small" style="font-size:13px;min-height:30px;">Actualiser</button>
     </div>
 
-    <div id="planningContent" style="padding-top:12px;"><div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div></div>
+    <div id="planningContent" style="padding-top:10px;"><div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div></div>
   </div>
 
-  <!-- Pointages validés -->
-  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:120px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(28px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <strong style="font-size:22px;">Mes pointages validés</strong>
+  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:18px;box-shadow:0 24px 90px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:13px;touch-action:pan-y;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <strong style="font-size:18px;">Mes pointages validés</strong>
       <div>
-        <button class="small" onclick="actualiserValides()" style="padding:8px 10px; font-size:14px; min-height:32px;">Actualiser</button>
-        <button class="small" onclick="exportValidesPDF()" style="padding:8px 10px; font-size:14px; min-height:32px;">Exporter PDF</button>
-        <button class="secondary" onclick="fermerValides()" style="padding:8px 10px; font-size:14px; min-height:32px;">Fermer</button>
+        <button class="small" onclick="actualiserValides()" style="padding:6px 10px; font-size:13px; min-height:30px;">Actualiser</button>
+        <button class="small" onclick="exportValidesPDF()" style="padding:6px 10px; font-size:13px; min-height:30px;">Exporter PDF</button>
+        <button class="secondary" onclick="fermerValides()" style="padding:6px 10px; font-size:13px; min-height:30px;">Fermer</button>
       </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px;">
-      <label style="font-size:14px;">De
-        <input type="date" id="valDateFrom" style="font-size:14px;padding:8px;">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+      <label style="font-size:13px;">De
+        <input type="date" id="valDateFrom" style="font-size:13px;padding:8px;">
       </label>
-      <label style="font-size:14px;">À
-        <input type="date" id="valDateTo" style="font-size:14px;padding:8px;">
+      <label style="font-size:13px;">À
+        <input type="date" id="valDateTo" style="font-size:13px;padding:8px;">
       </label>
-      <button onclick="actualiserValides()" class="small" style="font-size:14px;min-height:32px;">Appliquer</button>
-      <button onclick="resetValidesFilters()" class="secondary small" style="font-size:14px;min-height:32px;">Actualiser</button>
+      <button onclick="actualiserValides()" class="small" style="font-size:13px;min-height:30px;">Appliquer</button>
+      <button onclick="resetValidesFilters()" class="secondary small" style="font-size:13px;min-height:30px;">Actualiser</button>
     </div>
 
     <div id="valStatus" class="muted" style="margin-bottom:8px;">Choisissez des dates puis cliquez sur Appliquer.</div>
-    <div id="valContent" class="table-wrap" style="overflow:auto;max-height:65vh;">
+    <div id="valContent" class="table-wrap" style="overflow:auto;max-height:60vh;">
       <div class="muted">Aucune donnée.</div>
     </div>
   </div>
 
   <div id="fixedFooter" class="fixed-footer hidden" aria-hidden="true">
     <div class="footer-left">
-      <button id="btnShowHistory" onclick="afficherHistorique()" style="font-size:14px;padding:10px 12px;min-height:36px;">Afficher l'historique</button>
-      <button id="btnShowPlanning" onclick="afficherPlanning()" style="font-size:14px;padding:10px 12px;min-height:36px;">Afficher le planning</button>
-      <button id="btnShowValides" onclick="afficherValides()" style="font-size:14px;padding:10px 12px;min-height:36px;">Pointages validés</button>
+      <button id="btnShowHistory" onclick="afficherHistorique()" class="small" style="font-size:13px;padding:8px 12px;min-height:30px;">Historique</button>
+      <button id="btnShowPlanning" onclick="afficherPlanning()" class="small" style="font-size:13px;padding:8px 12px;min-height:30px;">Planning</button>
+      <button id="btnShowValides" onclick="afficherValides()" class="small" style="font-size:13px;padding:8px 12px;min-height:30px;">Pointages validés</button>
     </div>
     <div class="footer-right" id="appCredit">PCELEC</div>
   </div>
 
+  <!-- templates unchanged (only inherit fonts) -->
   <template id="interimTpl">
     <div class="interim-block">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -377,7 +373,7 @@
 
   <template id="chantierTpl">
     <div class="chantier-block">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <strong class="chantier-title">Chantier</strong>
         <button class="small" onclick="supprimerEntry(this)">Supprimer</button>
       </div>
@@ -414,7 +410,7 @@
 
   <template id="deplacementTpl">
     <div class="deplacement-block">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <strong class="deplacement-title">Déplacement</strong>
         <button class="small" onclick="supprimerEntry(this)">Supprimer</button>
       </div>
@@ -469,29 +465,12 @@
     let planningEmployees = [];
     let cachedValides = [];
 
+    // Surbrillance sets + détection iOS
     let assignedCampings = new Set();
     let assignedAffaires = new Map();
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
-    function fmtDateDisplay(isoStr){
-      if(!isoStr) return '';
-      const parts = isoStr.split('-');
-      if(parts.length===3){
-        const [y,m,d]=parts;
-        return `${d}/${m}/${y}`;
-      }
-      return isoStr;
-    }
-    function fmtHHMM(v){
-      if(v==null) return '';
-      const s=String(v).trim();
-      const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
-      return s;
-    }
-    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
-    function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
 
     window.onload = function(){
       const params = new URLSearchParams(window.location.search);
@@ -514,6 +493,8 @@
       setDefaultTaskDates();
       setDefaultPlanningDates();
       setDefaultValidesDates();
+      setDefaultHistoryToday();           // pré-remplit dates
+      applyHistoryFilters();              // charge l'historique du jour
       chargerTachesAujourdHui();
     };
 
@@ -622,7 +603,26 @@
       }).getMatriculeForName(currentUser);
     }
 
-    /* ---------- MES TÂCHES ---------- */
+    function fmtDateDisplay(isoStr){
+      if(!isoStr) return '';
+      const parts = isoStr.split('-');
+      if(parts.length===3){
+        const [y,m,d]=parts;
+        return `${d}/${m}/${y}`;
+      }
+      return isoStr;
+    }
+    function fmtHHMM(v){
+      if(v==null) return '';
+      const s=String(v).trim();
+      const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
+      return s;
+    }
+    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+    function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
+
+    /* ---------- MES TÂCHES : Aujourd'hui + filtré ---------- */
     function chargerTachesAujourdHui(){
       const todayIso = new Date().toISOString().slice(0,10);
       const key = (currentMatricule || currentUser || '').trim();
@@ -745,7 +745,7 @@
         const ta=(a.tache||'').toLowerCase(), tb=(b.tache||'').toLowerCase();
         return ta.localeCompare(tb,'fr',{sensitivity:'base'});
       });
-      let html = '<ul style="padding-left:18px;font-size:16px;">';
+      let html = '<ul style="padding-left:18px;font-size:14px;">';
       sorted.forEach(t=>{
         html += `<li><b>${escapeHtml(t.camping||'')}</b> / ${escapeHtml(t.affaire||'')} — ${escapeHtml(t.tache||'')} ${t.commentaire?('(' + escapeHtml(t.commentaire) + ')'):''}</li>`;
       });
@@ -782,6 +782,8 @@
       html += '</tbody></table>';
       box.innerHTML = html;
     }
+    /* ---------- fin MES TÂCHES ---------- */
+
     /* ---------- Pointages validés ---------- */
     function afficherValides(){
       const meta = document.querySelector('meta[name="viewport"]');
@@ -1079,8 +1081,8 @@
     }
 
     function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); document.getElementById('msg').textContent=''; document.getElementById('transferStatus').textContent=''; document.getElementById('transferStatus').className='status-text'; document.getElementById('btnValider').disabled = false; }
-    function showError(id, msg){ const el = document.getElementById('err_' + id); if(!el) return; el.textContent = msg||''; el.style.display = msg ? 'block' : 'none'; }
-    function showMsg(text){ const el = document.getElementById('msg'); el.textContent = text || ''; if(!text) el.style.display='none'; else el.style.display='block'; setTimeout(()=>{ el.textContent=''; },4000); }
+    function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
+    function showMsg(text){ const el=document.getElementById('msg'); el.textContent = text || ''; if(!text) el.style.display='none'; else el.style.display='block'; setTimeout(()=>{ el.textContent=''; },4000); }
 
     function setTransferStatus(text, ok){
       const el = document.getElementById('transferStatus');
@@ -1241,7 +1243,8 @@
       const payload = {
         nom: currentUser,
         typePersonne: type,
-        entries: entries
+        entries: entries,
+        matricule: currentMatricule || ''
       };
 
       try{
@@ -1281,8 +1284,9 @@
       const panel=document.getElementById('historyPanel');
       panel.style.display='block';
       panel.setAttribute('aria-hidden','false');
-      document.getElementById('historyContent').innerHTML='<div class="muted">Clique sur Appliquer pour charger l\'historique.</div>';
+      document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
       document.getElementById('fixedFooter').style.display = 'none';
+      applyHistoryFilters();
     }
 
     function callHistorique(renderNow){
@@ -1298,7 +1302,7 @@
         })
         .withFailureHandler(function(err){
           cachedHistory=null;
-          if(renderNow) renderHistory([]); 
+          if(renderNow) renderHistory([]);
           showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
           setTimeout(() => showError('global', ''), 5000);
         })
@@ -1318,7 +1322,7 @@
       if(!salSelect || !campSelect) return;
       salSelect.innerHTML = '<option value="">Tous</option>';
       campSelect.innerHTML = '<option value="">Tous</option>';
-      const names = new Set();
+      const names = new Set(planningEmployees || []);
       const camps = new Set();
       for(let i=1;i<cachedHistory.length;i++){
         const row = cachedHistory[i];
@@ -1329,31 +1333,17 @@
       Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
     }
 
-    async function applyHistoryFilters(){
+    function applyHistoryFilters(){
+      const df = document.getElementById('histDateFrom').value || '';
+      const dt = document.getElementById('histDateTo').value || '';
+      const sal = document.getElementById('histSalarie').value || '';
+      const camp = document.getElementById('histCamping').value || '';
+      const statusBox = document.getElementById('historyContent');
+      if(statusBox) statusBox.innerHTML = '<div class="muted">Chargement...</div>';
       if(USE_LOCAL){
-        try{
-          const data = await apiPost('/getHistoriquePointagesFiltered', {
-            dateFrom: document.getElementById('histDateFrom').value || '',
-            dateTo: document.getElementById('histDateTo').value || '',
-            salarie: document.getElementById('histSalarie').value || '',
-            camping: document.getElementById('histCamping').value || ''
-          });
-          cachedHistory = data || [];
-          if(cachedHistory && cachedHistory.length){
-            const header = cachedHistory[0].map(h=> (h||'').toString().toLowerCase());
-            historyHeaderIndices = {
-              date: header.findIndex(h=>h.includes('date')),
-              nom: header.findIndex(h=>h.includes('nom')),
-              camping: header.findIndex(h=>h.includes('camping'))
-            };
-          }
-          renderHistory(filterCachedHistory());
-        }catch(err){
-          cachedHistory = null;
-          renderHistory([]);
-          showError('global','Erreur chargement historique (local): '+err);
-          setTimeout(()=>showError('global',''),4000);
-        }
+        apiPost('/getHistoriquePointagesFiltered', { dateFrom: df, dateTo: dt, salarie: sal, camping: camp })
+          .then(data => { cachedHistory = data || []; renderHistory(filterCachedHistory()); })
+          .catch(err => { cachedHistory=null; renderHistory([]); console.error(err); });
         return;
       }
       google.script.run
@@ -1364,27 +1354,17 @@
         .withFailureHandler(function(err){
           cachedHistory=null;
           renderHistory([]);
-          showError('global','Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
-          setTimeout(() => showError('global', ''), 5000);
+          console.error(err);
         })
-        .getHistoriquePointagesFiltered(
-          document.getElementById('histDateFrom').value || '',
-          document.getElementById('histDateTo').value || '',
-          document.getElementById('histSalarie').value || '',
-          document.getElementById('histCamping').value || ''
-        );
+        .getHistoriquePointagesFiltered(df, dt, sal, camp);
     }
 
     function resetHistoryFilters(){
-      document.getElementById('histDateFrom').value='';
-      document.getElementById('histDateTo').value='';
+      setDefaultHistoryToday();
       document.getElementById('histSalarie').value='';
       document.getElementById('histCamping').value='';
-      if(cachedHistory){
-        renderHistory(filterCachedHistory());
-      } else {
-        document.getElementById('historyContent').innerHTML='<div class="muted">Clique sur Appliquer pour charger l\'historique.</div>';
-      }
+      renderHistory([]);
+      document.getElementById('historyContent').innerHTML='<div class="muted">Clique sur Appliquer pour charger l\'historique.</div>';
     }
 
     function parseCellDate(s){
@@ -1422,7 +1402,7 @@
 
     function renderHistory(data){
       const content=document.getElementById('historyContent');
-      if(!data||data.length===0){ content.innerHTML='<div>Aucun historique.</div>'; return;}
+      if(!data||data.length===0){ content.innerHTML='<div class="muted">Aucun historique.</div>'; return;}
 
       const header=data[0];
       const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
@@ -1438,7 +1418,7 @@
         cells.forEach(c=>html+='<td>'+escapeHtml(fmtHHMM(c)||'')+'</td>');
         html+='</tr>';
       }
-      html+='</tbody></table><div style="height:200px;"></div></div>';
+      html+='</tbody></table><div style="height:160px;"></div></div>';
       content.innerHTML=html;
 
       const wrap = content.querySelector('.table-wrap');
@@ -1449,62 +1429,6 @@
         hsb.scrollLeft = wrap.scrollLeft;
         hsb.addEventListener('scroll', () => { wrap.scrollLeft = hsb.scrollLeft; });
         wrap.addEventListener('scroll', () => { hsb.scrollLeft = wrap.scrollLeft; });
-      }
-    }
-
-    function telechargerCSV(){} // placeholder
-
-    async function telechargerPDF(){
-      const btn=document.getElementById('btnExportPDF');
-      if(btn){btn.disabled=true;btn.textContent='Génération PDF...';}
-      try{
-        const data = filterCachedHistory();
-        if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
-
-        const header=data[0];
-        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
-        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
-        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
-
-        await ensureJsPDF();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l','pt','a4');
-
-        const df = document.getElementById('histDateFrom').value || '';
-        const dt = document.getElementById('histDateTo').value || '';
-        const sal = document.getElementById('histSalarie').value || '';
-        const camp = document.getElementById('histCamping').value || '';
-        const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
-          : 'Période : toutes dates';
-        const salText = 'Salarié : ' + (sal||'Tous');
-        const campText = 'Camping : ' + (camp||'Tous');
-        const genDate = new Date();
-        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
-
-        doc.setFontSize(14);
-        doc.text('Rapport Pointages', 16, 24);
-        doc.setFontSize(11);
-        doc.text(periodText, 16, 42);
-        doc.text(salText, 16, 58);
-        doc.text(campText, 16, 74);
-        doc.text(genText, 16, 90);
-
-        doc.autoTable({
-          head: [headForPdf.map(h=>h||'')],
-          body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
-          styles:{ fontSize:8, cellPadding:4 },
-          headStyles:{ fillColor:[37,99,235], textColor:255 },
-          alternateRowStyles:{ fillColor:[240,245,255] },
-          margin:{ top:110, bottom:24, left:16, right:16 }
-        });
-
-        doc.save('historique_pointages.pdf');
-      }catch(e){
-        showError('global','Erreur PDF: ' + (e.message||e));
-        setTimeout(()=>showError('global',''),4000);
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='Exporter PDF';}
       }
     }
 
@@ -1536,7 +1460,6 @@
       });
     }
 
-    /* Planning affichage */
     function afficherPlanning(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -1618,7 +1541,7 @@
           const tasksHtml = cellTasks.map(t=>{
             return `<div class="pill"><small>${escapeHtml(t.camping||'')} / ${escapeHtml(t.affaire||'')}</small>${escapeHtml(t.tache||'')} (${escapeHtml(t.debut||'')}-${escapeHtml(t.fin||'')})</div>`;
           }).join('');
-          return `<td class="col-day ${isToday?'today-col':''}">${tasksHtml || '<span class="muted" style="font-size:12px;">—</span>'}</td>`;
+          return `<td class="col-day ${isToday?'today-col':''}">${tasksHtml || '<span class="muted" style="font-size:11px;">—</span>'}</td>`;
         }));
         return '<tr>'+cells.join('')+'</tr>';
       }).join('');
@@ -1629,7 +1552,7 @@
             <thead><tr>${headerCells}</tr></thead>
             <tbody>${bodyRows}</tbody>
           </table>
-          <div style="height:200px;"></div>
+          <div style="height:160px;"></div>
         </div>
       `;
     }
@@ -1661,9 +1584,7 @@
         .replace(/'/g,'&#39;');
     }
 
-    window.logout = logout;
-    function logout(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'INDEX.html'; }
-
+    window.logout = function(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'INDEX.html'; };
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
@@ -1680,8 +1601,64 @@
     window.actualiserPlanning = actualiserPlanning;
     window.resetPlanningFilters = resetPlanningFilters;
     window.fermerPlanning = fermerPlanning;
-    window.telechargerPDF = telechargerPDF;
-    window.telechargerCSV = telechargerCSV;
+    window.telechargerPDF = function(){
+      const btn=document.getElementById('btnExportPDF');
+      if(btn){btn.disabled=true;btn.textContent='Génération PDF...';}
+      try{
+        const data = filterCachedHistory();
+        if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
+
+        const header=data[0];
+        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
+        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
+        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
+
+        ensureJsPDF().then(()=>{
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF('l','pt','a4');
+
+          const df = document.getElementById('histDateFrom').value || '';
+          const dt = document.getElementById('histDateTo').value || '';
+          const sal = document.getElementById('histSalarie').value || '';
+          const camp = document.getElementById('histCamping').value || '';
+          const periodText = (df||dt)
+            ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` 
+            : 'Période : toutes dates';
+          const salText = 'Salarié : ' + (sal||'Tous');
+          const campText = 'Camping : ' + (camp||'Tous');
+          const genDate = new Date();
+          const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
+
+          doc.setFontSize(14);
+          doc.text('Rapport Pointages', 16, 24);
+          doc.setFontSize(11);
+          doc.text(periodText, 16, 42);
+          doc.text(salText, 16, 58);
+          doc.text(campText, 16, 74);
+          doc.text(genText, 16, 90);
+
+          doc.autoTable({
+            head: [headForPdf.map(h=>h||'')],
+            body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
+            styles:{ fontSize:8, cellPadding:4 },
+            headStyles:{ fillColor:[37,99,235], textColor:255 },
+            alternateRowStyles:{ fillColor:[240,245,255] },
+            margin:{ top:110, bottom:24, left:16, right:16 }
+          });
+
+          doc.save('historique_pointages.pdf');
+        }).catch(e=>{
+          showError('global','Erreur PDF: ' + (e.message||e));
+          setTimeout(()=>showError('global',''),4000);
+        });
+      }catch(e){
+        showError('global','Erreur PDF: ' + (e.message||e));
+        setTimeout(()=>showError('global',''),4000);
+      }finally{
+        if(btn){btn.disabled=false;btn.textContent='Exporter PDF';}
+      }
+    };
+    window.telechargerCSV = function(){};
     window.afficherValides = afficherValides;
     window.fermerValides = fermerValides;
     window.resetValidesFilters = resetValidesFilters;
