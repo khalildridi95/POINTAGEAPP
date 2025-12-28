@@ -30,6 +30,8 @@
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:16px;align-items:center;}
     .footer-right{color:var(--muted);font-size:36px;}
+
+    /* Historique : panneau agrandi en bas */
     #historyPanel{
       position:fixed;
       left:0;
@@ -48,6 +50,7 @@
       font-size:10px;
       touch-action:pan-y;
     }
+    /* Planning : on garde le réglage existant */
     #planningPanel{
       position:fixed;left:0;right:0;bottom:120px;
       max-height:calc(100vh - 100px);
@@ -62,7 +65,17 @@
       font-size:10px;
       touch-action:pan-y;
     }
-    .h-scrollbar{position:sticky;top:0;z-index:5;height:16px;background:#f1f5f9;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable both-edges;}
+
+    .h-scrollbar{
+      position:sticky;
+      top:0;
+      z-index:5;
+      height:16px;
+      background:#f1f5f9;
+      overflow-x:auto;
+      overflow-y:hidden;
+      scrollbar-gutter:stable both-edges;
+    }
     .h-scrollbar-inner{height:1px;}
     .table-wrap{overflow:auto;max-height:calc(100vh - 240px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:300px;}
     table{min-width: 100%;border-collapse:collapse;font-size:26px;width:auto;padding-bottom:100px;}
@@ -82,23 +95,87 @@
     .status-text{font-weight:700;font-size:42px;margin-left:16px;}
     .status-green{color:#059669;}
     .status-red{color:#b91c1c;}
-    .planning-container{position: relative;max-height:70vh;width:100%;overflow:auto;border:1px solid #e5e7eb;background:#fff;box-sizing:border-box;}
-    .planning-table{border-collapse:collapse;width:max-content;min-width:200px;font-size:26px;}
-    .planning-table th,.planning-table td{
-      box-sizing:border-box;padding:14px 10px;text-align:left;border:1px solid #eee;
-      min-width:var(--planning-col-width);width:var(--planning-col-width);max-width:var(--planning-col-width);
-      overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#fff;
+
+    /* Planning style (aligné sur admin) */
+    .planning-container{
+      position: relative;
+      max-height:70vh;
+      width:100%;
+      overflow:auto;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      box-sizing:border-box;
     }
-    .planning-table thead th{position:sticky;top:0;z-index:15;background:#f1f5f9;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,0.04);}
-    .planning-table th.col-emp,.planning-table td.col-emp{position:sticky;left:0;z-index:18;background:#fff;box-shadow:6px 0 8px rgba(0,0,0,0.04);}
-    .planning-table thead th.col-emp{z-index:19;}
+    .planning-table{
+      border-collapse:collapse;
+      width:max-content;
+      min-width:200px;
+      font-size:26px;
+    }
+    .planning-table th,
+    .planning-table td{
+      box-sizing:border-box;
+      padding:14px 10px;
+      text-align:left;
+      border:1px solid #eee;
+      min-width:var(--planning-col-width);
+      width:var(--planning-col-width);
+      max-width:var(--planning-col-width);
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      background:#fff;
+    }
+    .planning-table thead th{
+      position:sticky;
+      top:0;
+      z-index:15;
+      background:#f1f5f9;
+      font-weight:800;
+      box-shadow:0 2px 6px rgba(0,0,0,0.04);
+    }
+    .planning-table th.col-emp,
+    .planning-table td.col-emp{
+      position:sticky;
+      left:0;
+      z-index:18;
+      background:#fff;
+      box-shadow:6px 0 8px rgba(0,0,0,0.04);
+    }
+    .planning-table thead th.col-emp{ z-index:19; }
     .planning-table tbody tr:nth-child(odd) td{background:var(--table-stripe,#fff);}
     .planning-table tbody tr:nth-child(even) td{background:var(--table-hover,#eef2ff);}
-    .pill{background:linear-gradient(120deg,#2563eb,#38bdf8);color:#fff;border-radius:12px;padding:10px 12px;font-size:22px;font-weight:700;display:block;margin:4px 0;white-space:normal;word-break:break-word;}
-    .pill small{display:block;color:#e0f2fe;font-weight:600;font-size:20px;}
+    .pill{
+      background:linear-gradient(120deg,#2563eb,#38bdf8);
+      color:#fff;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:22px;
+      font-weight:700;
+      display:block;
+      margin:4px 0;
+      white-space:normal;
+      word-break:break-word;
+    }
+    .pill small{
+      display:block;
+      color:#e0f2fe;
+      font-weight:600;
+      font-size:20px;
+    }
     .today-col{background:#fff7d6 !important;}
-    select option.opt-assigned-camp { background:#fff3c4; color:#92400e; font-weight:700; }
-    select option.opt-assigned-aff { background:#dbeafe; color:#1d4ed8; font-weight:700; }
+
+    /* Surbrillance des campings/affaires déjà affectés au salarié (desktop + fallback iOS via préfixe) */
+    select option.opt-assigned-camp {
+      background:#fff3c4;
+      color:#92400e;
+      font-weight:700;
+    }
+    select option.opt-assigned-aff {
+      background:#dbeafe;
+      color:#1d4ed8;
+      font-weight:700;
+    }
   </style>
 </head>
 
@@ -129,6 +206,7 @@
       <div id="form-sections" class="hidden">
         <div id="bloc-interimaire" class="hidden">
           <div id="interimContainer" style="margin-top:24px"></div>
+
           <div class="interim-actions" style="margin-top:24px;">
             <button class="small" onclick="ajouterInterimaire()">Ajouter intérimaire</button>
           </div>
@@ -152,6 +230,7 @@
       </div>
     </div>
 
+    <!-- Mes tâches planifiées -->
     <div id="mes-taches-card" class="card">
       <h2 style="margin-bottom:20px;">Mes tâches planifiées</h2>
       <div class="muted" style="margin-bottom:12px;">Tâches du jour</div>
@@ -174,12 +253,14 @@
   <div id="historyPanel" aria-hidden="true">
     <div id="historyHeader" style="margin-top: 100px;">
       <strong id="historyTitle" style="font-size:48px;">Historique</strong>
+
       <div>
         <button id="btnExportPDF" onclick="telechargerPDF()" style="padding:8px 12px; font-size:32px; min-height:40px;">Exporter PDF</button>
         <button class="secondary" onclick="fermerHistorique()" style="padding:8px 12px; font-size:32px; min-height:40px;">Fermer</button>
       </div>
     </div>
 
+    <!-- Filtres historique -->
     <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-bottom:24px;">
       <label style="font-size:32px;">De
         <input type="date" id="histDateFrom" style="font-size:32px;padding:12px;">
@@ -204,6 +285,7 @@
     <div id="historyContent" style="padding-top: 20px;"><div class="muted">Clique sur Appliquer pour charger l'historique.</div></div>
   </div>
 
+  <!-- Planning général (vue tableau alignée admin) -->
   <div id="planningPanel" aria-hidden="true">
     <div id="planningHeader" style="margin-top: 100px.;">
       <strong id="planningTitle" style="font-size:48px;">Planning de l'équipe</strong>
@@ -232,6 +314,7 @@
     <div id="planningContent" style="padding-top:20px;"><div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div></div>
   </div>
 
+  <!-- Nouveau panneau Pointages validés -->
   <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:160px;max-height:calc(100vh - 160px);background:#fff;border-radius:20px;padding:32px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(32px + env(safe-area-inset-bottom));font-size:32px;touch-action:pan-y;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
       <strong style="font-size:48px;">Mes pointages validés</strong>
@@ -264,7 +347,6 @@
       <button id="btnShowHistory" onclick="afficherHistorique()" style="font-size:36px;padding:12px 20px;min-height:60px;">Afficher l'historique</button>
       <button id="btnShowPlanning" onclick="afficherPlanning()" style="font-size:36px;padding:12px 20px;min-height:60px;">Afficher le planning</button>
       <button id="btnShowValides" onclick="afficherValides()" style="font-size:36px;padding:12px 20px;min-height:60px;">Pointages validés</button>
-      <button id="btnFooterLogout" class="secondary" onclick="logout()" style="font-size:36px;padding:12px 20px;min-height:60px;">Déconnexion</button>
     </div>
     <div class="footer-right" id="appCredit">PCELEC</div>
   </div>
@@ -353,21 +435,31 @@
   </template>
 
   <script>
+    // --- Config API Render / fallback local ---
+    const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
+    const API_BASE = USE_LOCAL
+      ? ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
+          ? "http://localhost:3000/api"
+          : "https://pointage-oeax.onrender.com/api")
+      : '';
+
+    async function apiGet(path){
+      const r = await fetch(API_BASE + path);
+      if(!r.ok) throw new Error(r.statusText);
+      return r.json();
+    }
+    async function apiPost(path, body){
+      const r = await fetch(API_BASE + path,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body||{})
+      });
+      if(!r.ok) throw new Error(r.statusText);
+      return r.json();
+    }
+
     const BASE_URL = "<?= ScriptApp.getService().getUrl() ?>";
     function getBaseUrl(){ return BASE_URL; }
-
-    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
-  const API_BASE = USE_LOCAL
-    ? ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
-        ? "http://localhost:3000/api"
-        : "https://pointage-oeax.onrender.com/api")
-    : '';
-    async function apiGet(path){ const r=await fetch(API_BASE+path); if(!r.ok) throw new Error(r.statusText); return r.json(); }
-    async function apiPost(path, body){
-      const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
-      if(!r.ok) throw new Error(r.statusText); return r.json();
-    }
 
     let campingsAffaires = [];
     let currentUser = '';
@@ -378,39 +470,12 @@
     let planningEmployees = [];
     let cachedValides = [];
 
+    // Surbrillance sets + détection iOS
     let assignedCampings = new Set();
     let assignedAffaires = new Map();
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
-    function fmtDateDisplay(isoStr){
-      if(!isoStr) return '';
-      const parts = isoStr.split('-');
-      if(parts.length===3){
-        const [y,m,d]=parts;
-        return `${d}/${m}/${y}`;
-      }
-      return isoStr;
-    }
-    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
-    function fmtHHMM(v){
-      if(v==null) return '';
-      const s=String(v).trim();
-      const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
-      return s;
-    }
-    function fmtDateTimeDisplay(val){
-      if(!val) return '';
-      const d = new Date(val);
-      if (isNaN(d)) return val;
-      const dd = String(d.getDate()).padStart(2,'0');
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const yyyy = d.getFullYear();
-      const hh = String(d.getHours()).padStart(2,'0');
-      const mi = String(d.getMinutes()).padStart(2,'0');
-      return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
-    }
 
     window.onload = function(){
       const params = new URLSearchParams(window.location.search);
@@ -435,11 +500,6 @@
       setDefaultValidesDates();
       chargerTachesAujourdHui();
     };
-
-    function logout(){
-      try { localStorage.removeItem('userLogin'); } catch(e){}
-      window.location.href = 'index.html';
-    }
 
     function loadLogoFromCode() {
       if (USE_LOCAL) return;
@@ -485,6 +545,7 @@
       if (dt) dt.value = iso(today);
     }
 
+    // --- Historique : helpers pour date du jour par défaut ---
     function setDefaultHistoryToday(){
       const today = new Date().toISOString().slice(0,10);
       const df = document.getElementById('histDateFrom');
@@ -493,69 +554,52 @@
       if (dt) dt.value = today;
     }
 
-    async function chargerCampingsEtAffaires(){
-      try{
-        if (USE_LOCAL){
-          campingsAffaires = await apiGet('/getCampingsEtAffaires');
-          return;
-        }
-        google.script.run.withSuccessHandler(function(list){
-          campingsAffaires = list || [];
-        }).withFailureHandler(function(err){ console.error(err); }).getCampingsEtAffaires();
-      }catch(err){ console.error(err); }
+    function chargerCampingsEtAffaires(){
+      if (USE_LOCAL) {
+        apiGet('/getCampingsEtAffaires').then(list => { campingsAffaires = list || []; }).catch(console.error);
+        return;
+      }
+      google.script.run.withSuccessHandler(function(list){
+        campingsAffaires = list || [];
+      }).withFailureHandler(function(err){ console.error(err); }).getCampingsEtAffaires();
     }
-
-    async function chargerEmployesPlanning(){
-      try{
-        if (USE_LOCAL){
-          const list = await apiGet('/getEmployes');
-          planningEmployees = (list||[])
-            .filter(e => (e.role || '').toLowerCase() === 'user')
-            .map(e => e.nom)
-            .filter(Boolean)
-            .sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
-          const sel = document.getElementById('planSalarie');
-          if (sel){
-            sel.innerHTML = '<option value="">Tous</option>';
-            planningEmployees.forEach(n=>{
-              const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);
-            });
-          }
-          const hsel = document.getElementById('histSalarie');
-          if (hsel){
-            hsel.innerHTML = '<option value="">Tous</option>';
-            planningEmployees.forEach(n=>{
-              const o=document.createElement('option'); o.value=n; o.textContent=n; hsel.appendChild(o);
-            });
-          }
-          return;
+    function chargerEmployesPlanning(){
+      const handle = function(list){
+        planningEmployees = (list||[])
+          .filter(e => (e.role || '').toLowerCase() === 'user')
+          .map(e => e.nom)
+          .filter(Boolean)
+          .sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+        const sel = document.getElementById('planSalarie');
+        if (sel){
+          sel.innerHTML = '<option value="">Tous</option>';
+          planningEmployees.forEach(n=>{
+            const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);
+          });
         }
-        google.script.run.withSuccessHandler(function(list){
-          planningEmployees = (list||[])
-            .filter(e => (e.role || '').toLowerCase() === 'user')
-            .map(e => e.nom)
-            .filter(Boolean)
-            .sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
-          const sel = document.getElementById('planSalarie');
-          if (sel){
-            sel.innerHTML = '<option value="">Tous</option>';
-            planningEmployees.forEach(n=>{
-              const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o);
-            });
-          }
-          const hsel = document.getElementById('histSalarie');
-          if (hsel){
-            hsel.innerHTML = '<option value="">Tous</option>';
-            planningEmployees.forEach(n=>{
-              const o=document.createElement('option'); o.value=n; o.textContent=n; hsel.appendChild(o);
-            });
-          }
-        }).withFailureHandler(function(err){ console.error(err); }).getEmployes();
-      }catch(err){ console.error(err); }
+        const hsel = document.getElementById('histSalarie');
+        if (hsel){
+          hsel.innerHTML = '<option value="">Tous</option>';
+          planningEmployees.forEach(n=>{
+            const o=document.createElement('option'); o.value=n; o.textContent=n; hsel.appendChild(o);
+          });
+        }
+      };
+      if (USE_LOCAL) {
+        apiGet('/getEmployes').then(handle).catch(err=>console.error(err));
+        return;
+      }
+      google.script.run.withSuccessHandler(handle).withFailureHandler(function(err){ console.error(err); }).getEmployes();
     }
-
     function chargerMatricule(){
-      if (USE_LOCAL){ currentMatricule = ''; return; }
+      if (USE_LOCAL) {
+        apiPost('/getMatriculeForName', { name: currentUser }).then(m => {
+          currentMatricule = m || '';
+          const lbl = document.getElementById('matriculeDisplay');
+          if (lbl) lbl.textContent = currentMatricule ? ('Matricule: ' + currentMatricule) : '';
+        }).catch(console.error);
+        return;
+      }
       google.script.run.withSuccessHandler(function(m){
         currentMatricule = m || '';
         const lbl = document.getElementById('matriculeDisplay');
@@ -563,30 +607,36 @@
       }).getMatriculeForName(currentUser);
     }
 
+    function fmtDateDisplay(isoStr){
+      if(!isoStr) return '';
+      const parts = isoStr.split('-');
+      if(parts.length===3){
+        const [y,m,d]=parts;
+        return `${d}/${m}/${y}`;
+      }
+      return isoStr;
+    }
+    function fmtHHMM(v){
+      if(v==null) return '';
+      const s=String(v).trim();
+      const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
+      return s;
+    }
+    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
     function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
 
-    async function chargerTachesAujourdHui(){
+    /* ---------- MES TÂCHES : Aujourd'hui + filtré ---------- */
+    function chargerTachesAujourdHui(){
       const todayIso = new Date().toISOString().slice(0,10);
-      const key = (currentMatricule || currentUser || '').trim().toLowerCase();
+      const key = (currentMatricule || currentUser || '').trim();
       const box = document.getElementById('tachesToday');
       if (box) box.textContent = "Chargement...";
       const badge = document.getElementById('tachesStatus');
       if (badge) { badge.textContent = ""; badge.classList.remove('status-red'); badge.classList.add('status-green'); }
 
-      try{
-        let list = [];
-        if (USE_LOCAL){
-          list = await apiPost('/getPlanning', { startIso: todayIso, endIso: todayIso });
-        } else {
-          list = await new Promise((resolve,reject)=>{
-            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanningForUser(key, todayIso, todayIso);
-          });
-        }
-        const todayList = (list||[]).filter(t=>{
-          const k1 = (t.salarie||'').toLowerCase();
-          const k2 = (t.matricule||'').toLowerCase();
-          return key && (k1===key || k2===key) && t.date===todayIso;
-        });
+      const onSuccess = (list) => {
+        const todayList = (list||[]).filter(t=>t.date===todayIso);
         renderTachesToday(todayList);
         setAssignedFromList(todayList);
         if (badge) {
@@ -594,40 +644,36 @@
           badge.classList.remove('status-red');
           badge.classList.add('status-green');
         }
-      }catch(err){
+      };
+      const onError = (err) => {
         console.error(err);
         if (box) box.textContent = "Erreur de chargement.";
         if (badge) { badge.textContent = 'Erreur de chargement'; badge.classList.add('status-red'); }
+      };
+
+      if (USE_LOCAL) {
+        apiPost('/getPlanningForUser',{ loginOrMatricule:key, startIso: todayIso, endIso: todayIso })
+          .then(onSuccess).catch(onError);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPlanningForUser(key, todayIso, todayIso);
       }
     }
 
-    async function chargerMesTaches(){
+    function chargerMesTaches(){
       const box = document.getElementById('tachesContent');
       if (box) box.textContent = "Chargement...";
 
       const df = document.getElementById('uDateFrom').value || '';
       const dt = document.getElementById('uDateTo').value || '';
-      const key = (currentMatricule || currentUser || '').trim().toLowerCase();
+      const key = (currentMatricule || currentUser || '').trim();
 
-      try{
-        let list = [];
-        if (USE_LOCAL){
-          list = await apiPost('/getPlanning', { startIso: df || '1900-01-01', endIso: dt || '2100-12-31' });
-        } else {
-          list = await new Promise((resolve,reject)=>{
-            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanningForUser(key, df, dt);
-          });
-        }
-        const mine = (list||[]).filter(t=>{
-          const k1 = (t.salarie||'').toLowerCase();
-          const k2 = (t.matricule||'').toLowerCase();
-          return key && (k1===key || k2===key);
-        });
-        renderMesTaches(mine);
-        setAssignedFromList(mine);
-      }catch(err){
-        console.error(err);
-        if (box) box.textContent = "Erreur de chargement.";
+      const onSuccess = (list) => { renderMesTaches(list || []); setAssignedFromList(list || []); };
+      const onError = (err) => { console.error(err); if (box) box.textContent = "Erreur de chargement."; };
+
+      if (USE_LOCAL) {
+        apiPost('/getPlanningForUser',{ loginOrMatricule:key, startIso: df, endIso: dt }).then(onSuccess).catch(onError);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPlanningForUser(key, df, dt);
       }
     }
 
@@ -740,7 +786,9 @@
       html += '</tbody></table>';
       box.innerHTML = html;
     }
+    /* ---------- fin MES TÂCHES ---------- */
 
+    /* ---------- Pointages validés ---------- */
     function afficherValides(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -766,26 +814,22 @@
       setDefaultValidesDates();
       actualiserValides();
     }
-    async function actualiserValides(){
+    function actualiserValides(){
       const status = document.getElementById('valStatus');
       if(status) status.textContent = 'Chargement...';
       const df = document.getElementById('valDateFrom')?.value || '';
       const dt = document.getElementById('valDateTo')?.value || '';
-      try{
-        let list = [];
-        if (USE_LOCAL){
-          list = await apiPost('/getPayeValidee', { dateFrom: df, dateTo: dt, salarie: currentUser || '' });
-        } else {
-          list = await new Promise((resolve,reject)=>{
-            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPayeValidee(df, dt, currentUser || '');
-          });
-        }
+      const onSuccess = (list) => {
         cachedValides = list || [];
         renderValides(cachedValides);
         if(status) status.textContent = cachedValides.length ? (cachedValides.length + ' ligne(s)') : 'Aucune donnée.';
-      }catch(err){
-        console.error(err);
-        if(status) status.textContent = 'Erreur: ' + err;
+      };
+      const onError = (err) => { console.error(err); if(status) status.textContent = 'Erreur: ' + err; };
+
+      if (USE_LOCAL) {
+        apiPost('/getPayeValidee', { dateFrom: df, dateTo: dt, salarie: currentUser || '' }).then(onSuccess).catch(onError);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPayeValidee(df, dt, currentUser || '');
       }
     }
     function renderValides(list){
@@ -795,41 +839,30 @@
         box.innerHTML = '<div class="muted">Aucune donnée sur la période.</div>';
         return;
       }
-      const header = ['Date','Travail','Déplacement','Panier midi','Panier soir','Zone','Forfait trajet','HSup','HNuit','Découchés','WE','Validé par','Validé le','Commentaire'];
-      let html='<div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>';
-      html+='<div class="table-wrap"><table><thead><tr>';
-      header.forEach(h=>html+='<th>'+escapeHtml(h)+'</th>');
-      html+='</tr></thead><tbody>';
+      let html = '<table><thead><tr>';
+      const headers = ['Date','Travail','Déplacement','Panier midi','Panier soir','Zone','Forfait trajet','HSup','HNuit','Découchés','WE','Validé par','Validé le','Commentaire'];
+      headers.forEach(h=>html += `<th>${escapeHtml(h)}</th>`);
+      html += '</tr></thead><tbody>';
       list.forEach(r=>{
-        html+='<tr>'+
-          `<td>${escapeHtml(fmtDateDisplay(r.date)||'')}</td>`+
-          `<td>${escapeHtml(minToHHMM(r.travailMin))}</td>`+
-          `<td>${escapeHtml(minToHHMM(r.deplacementMin))}</td>`+
-          `<td>${escapeHtml(r.panierMidi||'')}</td>`+
-          `<td>${escapeHtml(r.panierSoir||'')}</td>`+
-          `<td>${escapeHtml(r.zone||'')}</td>`+
-          `<td>${escapeHtml(r.forfaitTrajet||'')}</td>`+
-          `<td>${escapeHtml(minToHHMM(r.heuresSupMin))}</td>`+
-          `<td>${escapeHtml(minToHHMM(r.heuresNuitMin))}</td>`+
-          `<td>${escapeHtml(r.decouches||'')}</td>`+
-          `<td>${escapeHtml(r.forfaitWeekend||'')}</td>`+
-          `<td>${escapeHtml(r.validePar||'')}</td>`+
-          `<td>${escapeHtml(fmtDateTimeDisplay(r.valideLe)||'')}</td>`+
-          `<td>${escapeHtml(r.commentaire||'')}</td>`+
-        '</tr>';
+        html += `<tr>
+          <td>${escapeHtml(fmtDateDisplay(r.date)||'')}</td>
+          <td>${escapeHtml(minToHHMM(r.travailMin))}</td>
+          <td>${escapeHtml(minToHHMM(r.deplacementMin))}</td>
+          <td>${escapeHtml(r.panierMidi||'')}</td>
+          <td>${escapeHtml(r.panierSoir||'')}</td>
+          <td>${escapeHtml(r.zone||'')}</td>
+          <td>${escapeHtml(r.forfaitTrajet||'')}</td>
+          <td>${escapeHtml(minToHHMM(r.heuresSupMin))}</td>
+          <td>${escapeHtml(minToHHMM(r.heuresNuitMin))}</td>
+          <td>${escapeHtml(r.decouches||'')}</td>
+          <td>${escapeHtml(r.forfaitWeekend||'')}</td>
+          <td>${escapeHtml(r.validePar||'')}</td>
+          <td>${escapeHtml(r.valideLe||'')}</td>
+          <td>${escapeHtml(r.commentaire||'')}</td>
+        </tr>`;
       });
-      html+='</tbody></table><div style="height:340px;"></div></div>';
+      html += '</tbody></table>';
       box.innerHTML = html;
-
-      const wrap = box.querySelector('.table-wrap');
-      const hsb  = box.querySelector('.h-scrollbar');
-      const hsbInner = box.querySelector('.h-scrollbar-inner');
-      if (wrap && hsb && hsbInner) {
-        hsbInner.style.width = wrap.scrollWidth + 'px';
-        hsb.scrollLeft = wrap.scrollLeft;
-        hsb.addEventListener('scroll', () => { wrap.scrollLeft = hsb.scrollLeft; });
-        wrap.addEventListener('scroll', () => { hsb.scrollLeft = wrap.scrollLeft; });
-      }
     }
     async function exportValidesPDF(){
       if (!cachedValides || !cachedValides.length) {
@@ -839,8 +872,8 @@
       const df = document.getElementById('valDateFrom')?.value || '';
       const dt = document.getElementById('valDateTo')?.value || '';
       const periodText = (df||dt)
-        ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` :
-        'Période : toutes dates';
+        ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
+        : 'Période : toutes dates';
       const salText = 'Salarié : ' + (currentUser || '');
       const genDate = new Date();
       const genText = 'Exporté le : ' + fmtDateDisplay(genDate.toISOString().slice(0,10)) + ' ' + genDate.toTimeString().slice(0,5);
@@ -872,7 +905,7 @@
           r.decouches||'',
           r.forfaitWeekend||'',
           r.validePar||'',
-          fmtDateTimeDisplay(r.valideLe)||'',
+          r.valideLe||'',
           r.commentaire||''
         ]);
 
@@ -1078,7 +1111,7 @@
       refreshOptionHighlights();
     }
 
-    async function valider(){
+    function valider(){
       clearAllErrors();
       setTransferStatus('TRANSFERT EN COURS', true);
       document.getElementById('btnValider').disabled = true;
@@ -1093,7 +1126,7 @@
 
         const entries = [];
         let ok = true;
-        blocks.forEach((b) => {
+        blocks.forEach((b, idx) => {
           const nom = b.querySelector('.it_nom').value.trim();
           const camping = b.querySelector('.it_camping').value;
           const affaire = b.querySelector('.it_affaire').value;
@@ -1113,7 +1146,7 @@
         if(!ok){ setTransferStatus('', null); document.getElementById('btnValider').disabled = false; return; }
 
         let success = 0, fail = 0;
-        async function sendNext(i){
+        function sendNext(i){
           if (i >= entries.length) {
             if (fail === 0) setTransferStatus('ENREGISTRÉ', true);
             else setTransferStatus('ERREUR (' + fail + ')', false);
@@ -1138,17 +1171,11 @@
               commentaire: en.commentaire || ''
             }]
           };
-          try{
-            if(USE_LOCAL){
-              await apiPost('/enregistrerPointageV2', payload); // si endpoint local existe
-            }else{
-              await new Promise((resolve,reject)=>{
-                google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).enregistrerPointageV2(payload);
-              });
-            }
-            success++;
-          }catch(err){ fail++; console.error('Erreur envoi intérimaire', en.nom, err); }
-          sendNext(i+1);
+          const onSuccess = () => { success++; sendNext(i+1); };
+          const onError = (err) => { fail++; console.error('Erreur envoi intérimaire', en.nom, err); sendNext(i+1); };
+
+          if (USE_LOCAL) apiPost('/enregistrerPointageV2', payload).then(onSuccess).catch(onError);
+          else google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).enregistrerPointageV2(payload);
         }
         sendNext(0);
         return;
@@ -1217,26 +1244,24 @@
         entries: entries
       };
 
-      try{
-        if(USE_LOCAL){
-          await apiPost('/enregistrerPointageV2', payload); // si endpoint local existe
-          setTransferStatus('ENREGISTRÉ', true);
-          showMsg('Enregistré (local)');
-        }else{
-          const count = await new Promise((resolve,reject)=>{
-            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).enregistrerPointageV2(payload);
-          });
-          setTransferStatus('ENREGISTRÉ', true);
-          showMsg('Enregistré (' + count + ' lignes ajoutées)');
-        }
+      const onSuccess = (count) => {
+        setTransferStatus('ENREGISTRÉ', true);
+        showMsg('Enregistré (' + count + ' lignes ajoutées)');
         reinitialiserFormulaire();
         document.getElementById('btnValider').disabled = false;
         setTimeout(()=>{ setTransferStatus('', null); }, 2500);
-      }catch(err){
+      };
+      const onError = (err) => {
         setTransferStatus('ERREUR', false);
         showError('global','Erreur serveur: ' + (err && err.message ? err.message : 'Erreur'));
         console.error(err);
         document.getElementById('btnValider').disabled = false;
+      };
+
+      if (USE_LOCAL) {
+        apiPost('/enregistrerPointageV2', payload).then(res=>onSuccess(res.count||entries.length)).catch(onError);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).enregistrerPointageV2(payload);
       }
     }
 
@@ -1248,6 +1273,7 @@
       clearAllErrors();
     }
 
+    /* ---------- Historique avec filtres (version OK) ---------- */
     function afficherHistorique(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -1259,23 +1285,23 @@
     }
 
     function callHistorique(renderNow){
-      if (USE_LOCAL){
-        applyHistoryFilters();
-        return;
+      const onSuccess = (data) => {
+        cachedHistory=data;
+        populateHistoryFilterOptions();
+        if(renderNow) renderHistory(filterCachedHistory());
+      };
+      const onError = (err) => {
+        cachedHistory=null;
+        if(renderNow) renderHistory([]);
+        showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
+        setTimeout(() => showError('global', ''), 5000);
+      };
+
+      if (USE_LOCAL) {
+        apiGet('/getHistoriquePointages').then(onSuccess).catch(onError);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getHistoriquePointages();
       }
-      google.script.run
-        .withSuccessHandler(function(data){
-          cachedHistory=data;
-          populateHistoryFilterOptions();
-          if(renderNow) renderHistory(filterCachedHistory());
-        })
-        .withFailureHandler(function(err){
-          cachedHistory=null;
-          if(renderNow) renderHistory([]);
-          showError('global', 'Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
-          setTimeout(() => showError('global', ''), 5000);
-        })
-        .getHistoriquePointages();
     }
 
     function populateHistoryFilterOptions(){
@@ -1302,50 +1328,14 @@
       Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
     }
 
-    async function applyHistoryFilters(){
-      if(USE_LOCAL){
-        try{
-          const data = await apiPost('/getHistoriquePointagesFiltered', {
-            dateFrom: document.getElementById('histDateFrom').value || '',
-            dateTo: document.getElementById('histDateTo').value || '',
-            salarie: document.getElementById('histSalarie').value || '',
-            camping: document.getElementById('histCamping').value || ''
-          });
-          cachedHistory = data || [];
-          if(cachedHistory && cachedHistory.length){
-            const header = cachedHistory[0].map(h=> (h||'').toString().toLowerCase());
-            historyHeaderIndices = {
-              date: header.findIndex(h=>h.includes('date')),
-              nom: header.findIndex(h=>h.includes('nom')),
-              camping: header.findIndex(h=>h.includes('camping'))
-            };
-          }
-          renderHistory(filterCachedHistory());
-        }catch(err){
-          cachedHistory = null;
-          renderHistory([]);
-          showError('global','Erreur chargement historique (local): '+err);
-          setTimeout(()=>showError('global',''),4000);
-        }
+    function applyHistoryFilters(){
+      if(!cachedHistory){
+        document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
+        callHistorique(true);
         return;
       }
-      google.script.run
-        .withSuccessHandler(function(data){
-          cachedHistory=data;
-          renderHistory(filterCachedHistory());
-        })
-        .withFailureHandler(function(err){
-          cachedHistory=null;
-          renderHistory([]);
-          showError('global','Erreur chargement historique : ' + (err && err.message ? err.message : 'Erreur inconnue'));
-          setTimeout(() => showError('global', ''), 5000);
-        })
-        .getHistoriquePointagesFiltered(
-          document.getElementById('histDateFrom').value || '',
-          document.getElementById('histDateTo').value || '',
-          document.getElementById('histSalarie').value || '',
-          document.getElementById('histCamping').value || ''
-        );
+      const filtered = filterCachedHistory();
+      renderHistory(filtered);
     }
 
     function resetHistoryFilters(){
@@ -1396,19 +1386,14 @@
     function renderHistory(data){
       const content=document.getElementById('historyContent');
       if(!data||data.length===0){ content.innerHTML='<div>Aucun historique.</div>'; return;}
-
-      const header=data[0];
-      const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
-      const visibleHeader = hasRowIdx ? header.slice(0,-1) : header;
-
       let html='<div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>';
       html+='<div class="table-wrap"><table><thead><tr>';
-      visibleHeader.forEach(h=>html+='<th>'+escapeHtml(h||'')+'</th>');
+      const header=data[0];
+      header.forEach(h=>html+='<th>'+escapeHtml(h||'')+'</th>');
       html+='</tr></thead><tbody>';
       for(let i=1;i<data.length;i++){
-        const cells = hasRowIdx ? data[i].slice(0,-1) : data[i];
         html+='<tr>';
-        cells.forEach(c=>html+='<td>'+escapeHtml(c||'')+'</td>');
+        data[i].forEach(c=>html+='<td>'+escapeHtml(c||'')+'</td>');
         html+='</tr>';
       }
       html+='</tbody></table><div style="height:340px;"></div></div>';
@@ -1425,7 +1410,7 @@
       }
     }
 
-    function telechargerCSV(){} // placeholder
+    function telechargerCSV(){} // supprimé
 
     async function telechargerPDF(){
       const btn=document.getElementById('btnExportPDF');
@@ -1433,12 +1418,6 @@
       try{
         const data = filterCachedHistory();
         if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
-
-        const header=data[0];
-        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
-        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
-        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
-
         await ensureJsPDF();
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l','pt','a4');
@@ -1448,12 +1427,12 @@
         const sal = document.getElementById('histSalarie').value || '';
         const camp = document.getElementById('histCamping').value || '';
         const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` : 'Période : toutes dates';
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
+          : 'Période : toutes dates';
         const salText = 'Salarié : ' + (sal||'Tous');
         const campText = 'Camping : ' + (camp||'Tous');
         const genDate = new Date();
-        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
-
+        const genText = 'Généré le : ' + fmtDateDisplay(genDate.toISOString().slice(0,10)) + ' ' + genDate.toTimeString().slice(0,5);
         doc.setFontSize(14);
         doc.text('Rapport Pointages', 16, 24);
         doc.setFontSize(11);
@@ -1462,15 +1441,16 @@
         doc.text(campText, 16, 74);
         doc.text(genText, 16, 90);
 
+        const head = [data[0].map(h=>h||'')];
+        const body = data.slice(1).map(r=>r.map(c=>c||''));
         doc.autoTable({
-          head: [headForPdf.map(h=>h||'')],
-          body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
+          head,
+          body,
           styles:{ fontSize:8, cellPadding:4 },
           headStyles:{ fillColor:[37,99,235], textColor:255 },
           alternateRowStyles:{ fillColor:[240,245,255] },
           margin:{ top:110, bottom:24, left:16, right:16 }
         });
-
         doc.save('historique_pointages.pdf');
       }catch(e){
         showError('global','Erreur PDF: ' + (e.message||e));
@@ -1508,6 +1488,7 @@
       });
     }
 
+    /* ---------- Planning général (vue tableau admin-like) ---------- */
     function afficherPlanning(){
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
@@ -1520,26 +1501,20 @@
       actualiserPlanning();
     }
 
-    async function actualiserPlanning(){
+    function actualiserPlanning(){
       const df = document.getElementById('planDateFrom').value || '';
       const dt = document.getElementById('planDateTo').value || '';
       const content = document.getElementById('planningContent');
       if (content) content.innerHTML = '<div class="muted">Chargement...</div>';
-      try{
-        let list = [];
-        if (USE_LOCAL){
-          const today = new Date().toISOString().slice(0,10);
-          list = await apiPost('/getPlanning', { startIso: df || today, endIso: dt || today });
-        }else{
-          list = await new Promise((resolve,reject)=>{
-            google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
-          });
-        }
-        cachedPlanning = list || [];
-        renderPlanningGrid(cachedPlanning);
-      }catch(err){
-        console.error(err);
-        if (content) content.innerHTML = '<div class="muted">Erreur de chargement.</div>';
+
+      const onSuccess = (list) => { cachedPlanning = list || []; renderPlanningGrid(cachedPlanning); };
+      const onError = (err) => { console.error(err); if (content) content.innerHTML = '<div class="muted">Erreur de chargement.</div>'; };
+
+      if (USE_LOCAL) {
+        const today = new Date().toISOString().slice(0,10);
+        apiPost('/getPlanning', { startIso: df || today, endIso: dt || today }).then(onSuccess).catch(onError);
+      } else {
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError).getPlanning(df || new Date().toISOString().slice(0,10), dt || new Date().toISOString().slice(0,10));
       }
     }
 
@@ -1632,7 +1607,6 @@
         .replace(/'/g,'&#39;');
     }
 
-    window.logout = logout;
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
