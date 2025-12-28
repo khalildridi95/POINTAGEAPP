@@ -18,6 +18,14 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
 
+// --- CORS ---
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://khalildridi95.github.io",       // GitHub Pages
+  "https://pointage-oeax.onrender.com"     // Backend Render
+];
+
 // --- DB ---
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
@@ -122,11 +130,18 @@ function computeDurationMinutes(debut, fin, pause, reprise) {
 
 // --- Express app ---
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+}));
 app.use(bodyParser.json());
 
 // Statique
 app.use(express.static(path.join(__dirname, "public")));
+
+// Santé
+app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
 // ----------- AUTH / LISTES -----------
 app.get("/api/getIdentifiants", (req, res) => {
