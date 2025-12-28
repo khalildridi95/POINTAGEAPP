@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Admin - PCELEC (local)</title>
 
-  <!-- jsPDF & autotable -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -182,7 +181,7 @@
         </div>
       </header>
 
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px.">
         <label>De <input type="date" id="recapFrom"></label>
         <label>À <input type="date" id="recapTo"></label>
         <label>Camping <select id="recapCamp"><option value="">Tous</option></select></label>
@@ -257,7 +256,6 @@
   </div>
 
   <script>
-    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
@@ -277,27 +275,7 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function redirectToLogin(){
-      try{ localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){}
-      window.location.href = 'index.html';
-    }
-    function ensureAuth(){
-      const storedUser = (()=>{ try{return localStorage.getItem('userLogin')||'';}catch(e){return'';} })();
-      const storedRole = (()=>{ try{return localStorage.getItem('userRole')||'';}catch(e){return'';} })();
-      const params = new URLSearchParams(window.location.search);
-      const urlUser = params.get('u') || '';
-      if(!storedUser || !storedRole) redirectToLogin();
-      if(urlUser && urlUser !== storedUser) redirectToLogin();
-      if(!urlUser){
-        window.location.replace(window.location.pathname + '?u=' + encodeURIComponent(storedUser));
-        return false;
-      }
-      if(storedRole !== 'admin') redirectToLogin();
-      currentUser = storedUser;
-      return true;
-    }
-
-    function logout(){ try{ localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){} window.location.href = 'index.html'; }
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -317,15 +295,23 @@
     function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
     function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
 
-    function openArchiveModal(){}
-    function closeArchiveModal(){}
-    function onClickExportArchive(btn){}
-    function onClickCleanApp(btn){}
+    function ensureAuth(){
+      const urlUser = new URLSearchParams(window.location.search).get('u') || '';
+      let saved='';
+      try { saved = localStorage.getItem('userLogin') || ''; } catch(e){}
+      const login = urlUser || saved;
+      if (!login) { logout(); return; }
+      if (urlUser && saved && urlUser !== saved) { logout(); return; }
+      apiPost("/getRoleForLogin", { login })
+        .then(role=>{
+          if ((role||'').toLowerCase() !== 'admin') { logout(); return; }
+          currentUser = login;
+          initApp();
+        })
+        .catch(()=> logout());
+    }
 
     async function initApp(){
-      if(!ensureAuth()) return;
-      const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || currentUser || '';
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
@@ -342,7 +328,8 @@
       renderPlanning(start,end);
       loadHistory();
     }
-    window.onload = initApp;
+
+    window.onload = ensureAuth;
 
     function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
     function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
