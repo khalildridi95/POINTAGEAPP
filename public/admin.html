@@ -96,11 +96,31 @@
     input:checked + .slider{background:#2563eb;}
     input:checked + .slider:before{transform:translateX(24px);}
     .today-col{background:#fff7d6 !important;}
+
+    /* Blocage visuel tant que l'auth n'est pas validée */
+    #auth-guard {
+      position: fixed;
+      inset: 0;
+      background: #f8fafc;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      flex-direction: column;
+      gap: 12px;
+      color: #0f172a;
+      font-family: Inter, Arial, sans-serif;
+    }
   </style>
 </head>
 
 <body>
-  <div class="grid">
+  <div id="auth-guard">
+    <div style="font-weight:700;font-size:18px;">Vérification de la session…</div>
+    <div class="muted" style="font-size:14px;">Merci de patienter</div>
+  </div>
+
+  <div class="grid" id="app-root" style="display:none;">
     <div class="card">
       <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
         <div style="text-align:center;">
@@ -263,59 +283,40 @@
       : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
-    /* --- Sécurité front minimale --- */
-    const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      // Pas de jeton => retour login
-      window.location.href = 'index.html';
+    /* ---------- Auth front ---------- */
+    const LOGIN_KEY = 'userLogin';
+    function safeGetLocal(k){ try{return localStorage.getItem(k)||'';}catch(e){return'';} }
+    function safeSetLocal(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
+    function showGuard(show){
+      const g=document.getElementById('auth-guard');
+      const app=document.getElementById('app-root');
+      if(!g||!app) return;
+      if(show){ g.style.display='flex'; app.style.display='none'; }
+      else { g.style.display='none'; app.style.display='grid'; }
     }
-    const AUTH_HEADERS = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-
-    async function apiGet(path){
-      const res = await fetch(API_BASE+path, { headers: { ...AUTH_HEADERS } });
-      if (res.status === 401 || res.status === 403) { localStorage.removeItem('authToken'); window.location.href = 'index.html'; return; }
-      if(!res.ok) throw new Error(res.status+" "+res.statusText);
-      return res.json();
-    }
-    async function apiPost(path, body){
-      const res = await fetch(API_BASE+path, {
-        method:"POST",
-        headers: { "Content-Type":"application/json", ...AUTH_HEADERS },
-        body: JSON.stringify(body||{})
-      });
-      if (res.status === 401 || res.status === 403) { localStorage.removeItem('authToken'); window.location.href = 'index.html'; return; }
-      if(!res.ok) throw new Error(res.status+" "+res.statusText);
-      return res.json();
-    }
-
-    // Optionnel : récupère l'utilisateur courant depuis l'API si disponible
-    async function fetchCurrentUserOrRedirect(){
-      try{
-        // Si ton backend expose /api/me (recommandé)
-        const me = await apiGet("/me");
-        if (me && me.nom) {
-          currentUser = me.nom;
-          if (me.role) currentRole = (me.role||'').toLowerCase();
-          if (currentRole && currentRole !== 'admin') {
-            alert("Accès réservé aux administrateurs.");
-            logout();
-          }
-          document.getElementById('adminUser').textContent = currentUser || '(?)';
-          return;
-        }
-      }catch(e){
-        // Si 401/403, apiGet redirige déjà
+    function enforceAuth(){
+      showGuard(true);
+      const params=new URLSearchParams(window.location.search);
+      const paramUser=(params.get('u')||'').trim();
+      const stored=safeGetLocal(LOGIN_KEY).trim();
+      const user=stored||paramUser;
+      if(!user){
+        window.location.replace('index.html');
+        return null;
       }
-      // fallback ancien flux (mais toujours avec token présent)
-      const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || localStorage.getItem('userLogin') || '';
-      if (!currentUser) { logout(); }
-      document.getElementById('adminUser').textContent = currentUser || '(?)';
+      if(paramUser && stored && paramUser !== stored){
+        const url=new URL(window.location.href);
+        url.searchParams.set('u', stored);
+        window.location.replace(url.toString());
+        return null;
+      }
+      if(!stored && paramUser) safeSetLocal(LOGIN_KEY, paramUser);
+      showGuard(false);
+      return stored||paramUser;
     }
-    /* --- Fin sécurité front minimale --- */
+    /* ---------- */
 
     let currentUser = '';
-    let currentRole = '';
     let employes = [];
     let campAff = [];
     let salariedNames = [];
@@ -329,7 +330,10 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ try{ localStorage.removeItem('userLogin'); localStorage.removeItem('authToken'); }catch(e){} window.location.href = 'index.html'; }
+    function logout(){
+      try{ localStorage.removeItem(LOGIN_KEY); }catch(e){}
+      window.location.href = 'index.html';
+    }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -342,6 +346,10 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
+    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
+    async function apiGet(path){ return fetchJSON(API_BASE+path); }
+    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
+
     function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
     function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
 
@@ -351,7 +359,11 @@
     function onClickCleanApp(btn){}
 
     async function initApp(){
-      await fetchCurrentUserOrRedirect(); // sécurité : récupère l'utilisateur et vérifie le rôle
+      const enforcedUser = enforceAuth();
+      if(!enforcedUser) return;
+      const params = new URLSearchParams(window.location.search);
+      currentUser = enforcedUser || params.get('u') || '';
+      document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
 
@@ -386,8 +398,6 @@
     async function loadEmployees(){
       try{
         employes = await apiGet("/getEmployes");
-        // retire le mot de passe en clair si jamais renvoyé (défensif)
-        employes = (employes||[]).map(e=>({ ...e, password: undefined }));
         salariedNames = (employes||[]).filter(e => (e.role||'user').toLowerCase() === 'user').map(e => e.nom);
       }catch(e){ console.error(e); employes=[]; salariedNames=[]; }
     }
@@ -398,7 +408,7 @@
       const box = document.getElementById('empList');
       if(!box) return;
       if(!employes || employes.length===0){ box.innerHTML='<div class="muted">Aucun salarié.</div>'; return; }
-      let html = '<table><thead><tr><th>Nom</th><th>Email</th><th>Matricule</th><th>Rôle</th><th>Mot de passe (saisie pour reset)</th></tr></thead><tbody>';
+      let html = '<table><thead><tr><th>Nom</th><th>Email</th><th>Matricule</th><th>Rôle</th><th>Mot de passe</th></tr></thead><tbody>';
       employes.forEach((e,i)=>{
         html += `<tr>
           <td><input value="${escapeHtml(e.nom||'')}" oninput="employes[${i}].nom=this.value"></td>
@@ -411,7 +421,7 @@
               <option value="compta" ${((e.role||'user')==='compta')?'selected':''}>compta</option>
             </select>
           </td>
-          <td><input type="text" value="" placeholder="Nouveau mot de passe (optionnel)" oninput="employes[${i}].password=this.value"></td>
+          <td><input type="text" value="${escapeHtml(e.password||'')}" oninput="employes[${i}].password=this.value"></td>
         </tr>`;
       });
       html += '</tbody></table>';
