@@ -135,9 +135,9 @@
           }).then(role=>{
             try{ localStorage.setItem('userLogin', login); }catch(e){}
             stopLoading(true);
-            if(role==='admin') window.location.href = "./ADMIN.html?u="+encodeURIComponent(login);
-            else if(role==='compta') window.location.href = "./VALIDATION.html?u="+encodeURIComponent(login);
-            else window.location.href = "./SALARIE.html?u="+encodeURIComponent(login); // à créer si besoin
+            if(role==='admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
+            else if(role==='compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
+            else window.location.href = "./salarie.html?u="+encodeURIComponent(login); // à créer si besoin
           });
         } else {
           stopLoading(false);
