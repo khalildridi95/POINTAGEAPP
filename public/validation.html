@@ -246,7 +246,7 @@
     let historyHeaderIndices={ date:-1, nom:-1, camping:-1 };
 
     /* --- Helpers --- */
-    function logout(){ try{localStorage.removeItem('userLogin');}catch(e){} window.location.href='INDEX.html'; }
+    function logout(){ try{localStorage.removeItem('userLogin');}catch(e){} window.location.href='index.html'; }
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60),mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
     function hhmmToMin(v){ if(!v) return 0; const m=String(v).trim().match(/^(\d{1,2}):(\d{2})$/); if(!m) return 0; return parseInt(m[1],10)*60+parseInt(m[2],10); }
     function fmtDateLocal(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
