@@ -1,15 +1,13 @@
-// Ajoute en haut du fichier :
 import xlsx from "xlsx";
-
-// Backend local pour remplacer Google Apps Script
-// Démarrage : node server.js (port 3000 par défaut)
-
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import cookieParser from "cookie-parser";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,13 +15,16 @@ const __dirname = path.dirname(__filename);
 // --- CONFIG ---
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
+const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-prod";
+const COOKIE_NAME = "auth_token";
+const TOKEN_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2h
 
 // --- CORS ---
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
-  "https://khalildridi95.github.io",       // GitHub Pages
-  "https://pointage-oeax.onrender.com"     // Backend Render
+  "https://khalildridi95.github.io",
+  "https://pointage-oeax.onrender.com",
 ];
 
 // --- DB ---
@@ -95,13 +96,14 @@ CREATE TABLE IF NOT EXISTS payes_validation (
 );
 `);
 
-// Seed minimal
+// Seed minimal (admin demo/demo)
 const rowCount = db.prepare("SELECT COUNT(*) AS n FROM employes").get().n;
 if (rowCount === 0) {
+  const hashed = bcrypt.hashSync("demo", 10);
   db.prepare(`
     INSERT INTO employes (nom,email,password,role,matricule)
-    VALUES ('demo','demo@example.com','demo','admin','M001')
-  `).run();
+    VALUES ('demo','demo@example.com',?,'admin','M001')
+  `).run(hashed);
   console.log("Seed employes: demo/demo (admin)");
 }
 
@@ -128,63 +130,153 @@ function computeDurationMinutes(debut, fin, pause, reprise) {
   return Math.max(0, dur);
 }
 
+// --- Helpers auth ---
+const isHashed = (pwd) => typeof pwd === "string" && /^\$2[aby]\$/.test(pwd);
+const hashPassword = (pwd) => bcrypt.hashSync(pwd, 10);
+const comparePassword = (stored, plain) => {
+  if (!stored) return false;
+  if (isHashed(stored)) return bcrypt.compareSync(plain, stored);
+  return stored === plain; // fallback legacy clair
+};
+function signToken(user) {
+  return jwt.sign(
+    { nom: user.nom, role: (user.role || "user").toLowerCase() },
+    JWT_SECRET,
+    { expiresIn: "2h" }
+  );
+}
+function setAuthCookie(res, token) {
+  res.cookie(COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: TOKEN_MAX_AGE_MS,
+  });
+}
+
 // --- Express app ---
 const app = express();
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, origin);
+    return cb(new Error("CORS not allowed"), false);
+  },
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "2mb" }));
+app.use(cookieParser());
+
+// attach user from JWT cookie
+app.use((req, _res, next) => {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (!token) return next();
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = { nom: payload.nom, role: payload.role };
+  } catch (e) {
+    // token invalide/expiré -> on ignore
+  }
+  next();
+});
+
+// protéger les pages HTML (sauf index)
+app.use((req, res, next) => {
+  if (req.path === "/" || req.path === "/index.html") return next();
+  if (req.path.endsWith(".html")) {
+    if (!req.user) return res.redirect("/index.html");
+  }
+  return next();
+});
 
 // Statique
 app.use(express.static(path.join(__dirname, "public")));
 
-// Santé
-app.get("/api/ping", (_req, res) => res.json({ pong: true }));
+// --- Middlewares auth ---
+const requireAuth = (roles = []) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ ok: false, error: "unauthorized" });
+  if (roles.length > 0 && !roles.includes((req.user.role || "").toLowerCase())) {
+    return res.status(403).json({ ok: false, error: "forbidden" });
+  }
+  next();
+};
 
-// ----------- AUTH / LISTES -----------
-app.get("/api/getIdentifiants", (req, res) => {
+// --- Routes publiques ---
+app.get("/api/ping", (_req, res) => res.json({ pong: true }));
+app.get("/api/getIdentifiants", (_req, res) => {
   const list = db.prepare("SELECT DISTINCT nom FROM employes ORDER BY nom COLLATE NOCASE").all().map(r => r.nom);
   res.json(list);
 });
 
+// Nouvelle route login
+app.post("/api/login", (req, res) => {
+  const { login, password } = req.body || {};
+  if (!login || !password) return res.status(400).json({ ok: false, error: "missing credentials" });
+  const row = db.prepare("SELECT nom,password,role FROM employes WHERE lower(nom)=lower(?)").get(login);
+  if (!row || !comparePassword(row.password, password)) {
+    return res.status(401).json({ ok: false, error: "invalid credentials" });
+  }
+  const role = (row.role || "user").toLowerCase();
+  const token = signToken({ nom: row.nom, role });
+  setAuthCookie(res, token);
+  res.json({ ok: true, nom: row.nom, role });
+});
+
+// Alias rétrocompatibilité (optionnel)
 app.post("/api/checkLogin", (req, res) => {
   const { login, password } = req.body || {};
-  if (!login || !password) return res.json(false);
-  const row = db.prepare("SELECT password FROM employes WHERE lower(nom)=lower(?)").get(login);
-  res.json(row && row.password === password);
+  const row = db.prepare("SELECT nom,password,role FROM employes WHERE lower(nom)=lower(?)").get(login || "");
+  if (!row || !comparePassword(row.password, password || "")) return res.json(false);
+  const role = (row.role || "user").toLowerCase();
+  const token = signToken({ nom: row.nom, role });
+  setAuthCookie(res, token);
+  res.json(true);
 });
 
-app.post("/api/getRoleForLogin", (req, res) => {
-  const { login } = req.body || {};
-  const row = db.prepare("SELECT role FROM employes WHERE lower(nom)=lower(?)").get(login || "");
-  const role = (row && row.role || "user").toLowerCase();
-  res.json(role === "admin" || role === "administrateur" ? "admin" : role === "compta" ? "compta" : "user");
+// Session courante
+app.get("/api/checkSession", (req, res) => {
+  if (!req.user) return res.status(401).json({ ok: false, error: "unauthorized" });
+  res.json({ ok: true, nom: req.user.nom, role: req.user.role });
 });
 
-app.get("/api/getEmployes", (req, res) => {
+// Logout
+app.post("/api/logout", (_req, res) => {
+  res.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  res.json({ ok: true });
+});
+
+// ----------- ROUTES PROTÉGÉES -----------
+app.post("/api/getRoleForLogin", requireAuth(), (req, res) => {
+  res.json(req.user.role || "user");
+});
+
+app.get("/api/getEmployes", requireAuth(), (req, res) => {
   const rows = db.prepare("SELECT nom,email,password,role,matricule FROM employes ORDER BY nom COLLATE NOCASE").all();
   res.json(rows);
 });
 
-app.post("/api/saveEmployes", (req, res) => {
+app.post("/api/saveEmployes", requireAuth(["admin"]), (req, res) => {
   const list = Array.isArray(req.body) ? req.body : [];
   const tx = db.transaction(() => {
     db.prepare("DELETE FROM employes").run();
     const ins = db.prepare("INSERT INTO employes (nom,email,password,role,matricule) VALUES (?,?,?,?,?)");
-    list.forEach(e => ins.run(e.nom || "", e.email || "", e.password || "", e.role || "user", e.matricule || ""));
+    list.forEach(e => {
+      const rawPwd = e.password || "";
+      const safePwd = rawPwd ? (isHashed(rawPwd) ? rawPwd : hashPassword(rawPwd)) : "";
+      ins.run(e.nom || "", e.email || "", safePwd, e.role || "user", e.matricule || "");
+    });
   });
   tx();
   res.json({ ok: true, count: list.length });
 });
 
-app.get("/api/getCampingsEtAffaires", (req, res) => {
+app.get("/api/getCampingsEtAffaires", requireAuth(), (_req, res) => {
   const rows = db.prepare("SELECT camping, affaire FROM camp_aff ORDER BY camping COLLATE NOCASE, affaire COLLATE NOCASE").all();
   res.json(rows);
 });
 
-app.post("/api/saveCampingsEtAffaires", (req, res) => {
+app.post("/api/saveCampingsEtAffaires", requireAuth(["admin"]), (req, res) => {
   const list = Array.isArray(req.body) ? req.body : [];
   const tx = db.transaction(() => {
     db.prepare("DELETE FROM camp_aff").run();
@@ -195,20 +287,18 @@ app.post("/api/saveCampingsEtAffaires", (req, res) => {
   res.json({ ok: true, count: list.length });
 });
 
-// Logo direct (optionnel)
-app.get("/api/getLogoUrlDirect", (_req, res) => {
+app.get("/api/getLogoUrlDirect", requireAuth(), (_req, res) => {
   res.json("https://www.pcelec.fr/wp-content/uploads/2020/01/pc-elec-sans-ombre.png");
 });
 
-// Matricule pour un nom
-app.post("/api/getMatriculeForName", (req, res) => {
+app.post("/api/getMatriculeForName", requireAuth(), (req, res) => {
   const { name } = req.body || {};
   const row = db.prepare("SELECT matricule FROM employes WHERE lower(nom)=lower(?)").get(name || "");
   res.json((row && row.matricule) || "");
 });
 
 // ----------- PLANNING -----------
-app.post("/api/getPlanning", (req, res) => {
+app.post("/api/getPlanning", requireAuth(), (req, res) => {
   const { startIso, endIso } = req.body || {};
   if (!startIso || !endIso) return res.json([]);
   const rows = db.prepare(`
@@ -220,7 +310,7 @@ app.post("/api/getPlanning", (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/savePlanning", (req, res) => {
+app.post("/api/savePlanning", requireAuth(["admin"]), (req, res) => {
   const entries = Array.isArray(req.body) ? req.body : [];
   const tx = db.transaction(() => {
     db.prepare("DELETE FROM planning").run();
@@ -238,8 +328,8 @@ app.post("/api/savePlanning", (req, res) => {
   res.json({ ok: true, count: entries.length });
 });
 
-// Planning par user (pour "mes tâches")
-app.post("/api/getPlanningForUser", (req, res) => {
+// Planning par user
+app.post("/api/getPlanningForUser", requireAuth(), (req, res) => {
   const { loginOrMatricule, startIso, endIso } = req.body || {};
   if (!startIso || !endIso || !loginOrMatricule) return res.json([]);
   const key = String(loginOrMatricule).toLowerCase();
@@ -255,8 +345,8 @@ app.post("/api/getPlanningForUser", (req, res) => {
   res.json(rows);
 });
 
-// Paquet initial (campAff + employes + planning)
-app.post("/api/getInitialData", (req, res) => {
+// Paquet initial
+app.post("/api/getInitialData", requireAuth(), (req, res) => {
   const { startIso, endIso } = req.body || {};
   const campAff = db.prepare("SELECT camping, affaire FROM camp_aff").all();
   const employes = db.prepare("SELECT nom,email,password,role,matricule FROM employes").all();
@@ -271,9 +361,8 @@ app.post("/api/getInitialData", (req, res) => {
   res.json({ campAff, employes, planning });
 });
 
-// Import Excel camp/aff (déjà là, on garde)
-// Remplace le handler /api/importCampAffLocal par ceci
-app.post("/api/importCampAffLocal", (req, res) => {
+// Import Excel camp/aff
+app.post("/api/importCampAffLocal", requireAuth(["admin"]), (req, res) => {
   const { b64, filename } = req.body || {};
   if (!b64) return res.status(400).json({ ok:false, error:"contenu vide" });
   try {
@@ -283,12 +372,9 @@ app.post("/api/importCampAffLocal", (req, res) => {
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1 });
 
     const out = [];
-    // Ligne 1 = entête ; données à partir de la ligne 2
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i] || [];
-      // Camping = colonne F (index 5)
       const camping = (r[5] || "").toString().trim();
-      // Affaire = colonne A & ":" & colonne C (index 0 et 2)
       const a = (r[0] || "").toString().trim();
       const c = (r[2] || "").toString().trim();
       const affaire = (a || c) ? `${a}:${c}`.replace(/^:|:$/g, "") : "";
@@ -308,8 +394,8 @@ app.post("/api/importCampAffLocal", (req, res) => {
   }
 });
 
-// ----------- POINTAGES (enregistrement V2) -----------
-app.post("/api/enregistrerPointageV2", (req, res) => {
+// ----------- POINTAGES -----------
+app.post("/api/enregistrerPointageV2", requireAuth(), (req, res) => {
   const payload = req.body || {};
   const name = payload.nom || "";
   const typePersonne = payload.typePersonne || "";
@@ -345,7 +431,7 @@ app.post("/api/enregistrerPointageV2", (req, res) => {
         depl_hhmm: minutesToHHMM(depl),
         matricule
       });
-    } else { // chantier
+    } else {
       rows.push({
         date: todayIso,
         type_personne: typePersonne,
@@ -378,7 +464,7 @@ app.post("/api/enregistrerPointageV2", (req, res) => {
 });
 
 // ----------- HISTORIQUE POINTAGES -----------
-app.post("/api/getHistoriquePointagesFiltered", (req, res) => {
+app.post("/api/getHistoriquePointagesFiltered", requireAuth(), (req, res) => {
   const { dateFrom, dateTo, salarie, camping } = req.body || {};
   const rows = db.prepare("SELECT * FROM pointages ORDER BY id").all();
   const out = [];
@@ -392,15 +478,14 @@ app.post("/api/getHistoriquePointagesFiltered", (req, res) => {
       out.push([
         r.date, r.type_personne, r.nom, r.nature, r.camping, r.affaire, r.commentaire,
         r.debut, r.pause, r.reprise, r.fin, r.travail_hhmm, r.depl_hhmm, r.matricule,
-        i + 2 // index 1-based, entête = 1
+        i + 2
       ]);
     }
   });
   res.json(out);
 });
 
-// Historique brut (non filtré) si besoin
-app.get("/api/getHistoriquePointages", (_req, res) => {
+app.get("/api/getHistoriquePointages", requireAuth(), (_req, res) => {
   const rows = db.prepare("SELECT * FROM pointages ORDER BY id").all();
   const out = [];
   out.push(["Date","Type personne","Nom","Nature","Camping","Affaire","Commentaire","Début","Pause","Reprise","Fin","Travail","Déplacement","Matricule"]);
@@ -412,7 +497,7 @@ app.get("/api/getHistoriquePointages", (_req, res) => {
 });
 
 // ----------- PAYE / VALIDATION -----------
-app.post("/api/getPointagesAValider", (req, res) => {
+app.post("/api/getPointagesAValider", requireAuth(["admin","compta"]), (req, res) => {
   const { dateFrom, dateTo, salarie } = req.body || {};
   const rows = db.prepare("SELECT * FROM pointages ORDER BY date, nom COLLATE NOCASE").all();
   const valides = new Set(
@@ -435,7 +520,7 @@ app.post("/api/getPointagesAValider", (req, res) => {
   res.json(out);
 });
 
-app.post("/api/validerPointage", (req, res) => {
+app.post("/api/validerPointage", requireAuth(["admin","compta"]), (req, res) => {
   const p = req.body || {};
   const vals = {
     date: p.date || "",
@@ -463,7 +548,7 @@ app.post("/api/validerPointage", (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/updatePayeValidation", (req, res) => {
+app.post("/api/updatePayeValidation", requireAuth(["admin","compta"]), (req, res) => {
   const p = req.body || {};
   const stmt = db.prepare(`
     UPDATE payes_validation SET
@@ -493,13 +578,13 @@ app.post("/api/updatePayeValidation", (req, res) => {
   res.json({ ok: true, changes: r.changes });
 });
 
-app.post("/api/deletePayeValidation", (req, res) => {
+app.post("/api/deletePayeValidation", requireAuth(["admin","compta"]), (req, res) => {
   const { date, salarie } = req.body || {};
   const r = db.prepare("DELETE FROM payes_validation WHERE date=? AND salarie=?").run(date || "", salarie || "");
   res.json({ ok: true, changes: r.changes });
 });
 
-app.post("/api/getPayeValidee", (req, res) => {
+app.post("/api/getPayeValidee", requireAuth(), (req, res) => {
   const { dateFrom, dateTo, salarie } = req.body || {};
   const rows = db.prepare("SELECT * FROM payes_validation ORDER BY date, salarie COLLATE NOCASE").all();
   const out = rows.filter(r =>
@@ -526,7 +611,7 @@ app.post("/api/getPayeValidee", (req, res) => {
   res.json(out);
 });
 
-app.post("/api/getRecapParSalarie", (req, res) => {
+app.post("/api/getRecapParSalarie", requireAuth(), (req, res) => {
   const { dateFrom, dateTo } = req.body || {};
   const rows = db.prepare("SELECT * FROM payes_validation").all();
   const inRange = rows.filter(r =>
@@ -566,10 +651,10 @@ app.post("/api/getRecapParSalarie", (req, res) => {
 });
 
 // ----------- HISTORIQUE EDIT -----------
-app.post("/api/updateHistoriquePointage", (req, res) => {
+app.post("/api/updateHistoriquePointage", requireAuth(["admin"]), (req, res) => {
   const { rowIndex, payload } = req.body || {};
   if (!rowIndex || !payload) return res.status(400).json({ ok:false, error:"rowIndex/payload manquant" });
-  const row = db.prepare("SELECT * FROM pointages ORDER BY id LIMIT 1 OFFSET ?").get(rowIndex - 2); // entête=1
+  const row = db.prepare("SELECT * FROM pointages ORDER BY id LIMIT 1 OFFSET ?").get(rowIndex - 2);
   if (!row) return res.status(404).json({ ok:false, error:"ligne introuvable" });
 
   const minutes = computeDurationMinutes(payload.debut, payload.fin, payload.pause, payload.reprise);
@@ -599,7 +684,7 @@ app.post("/api/updateHistoriquePointage", (req, res) => {
   res.json({ ok:true });
 });
 
-app.post("/api/deleteHistoriquePointage", (req,res)=>{
+app.post("/api/deleteHistoriquePointage", requireAuth(["admin"]), (req,res)=>{
   const { rowIndex } = req.body || {};
   if (!rowIndex) return res.status(400).json({ ok:false, error:"rowIndex manquant" });
   const row = db.prepare("SELECT * FROM pointages ORDER BY id LIMIT 1 OFFSET ?").get(rowIndex - 2);
