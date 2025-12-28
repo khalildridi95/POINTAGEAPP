@@ -232,7 +232,6 @@
     <div id="planningContent" style="padding-top:20px;"><div class="muted">Choisissez une plage de dates puis cliquez sur Appliquer.</div></div>
   </div>
 
-  <!-- Pointages validés (tableau type historique, mobile friendly) -->
   <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:160px;max-height:calc(100vh - 160px);background:#fff;border-radius:20px;padding:32px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(32px + env(safe-area-inset-bottom));font-size:32px;touch-action:pan-y;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
       <strong style="font-size:48px;">Mes pointages validés</strong>
@@ -357,8 +356,9 @@
     const BASE_URL = "<?= ScriptApp.getService().getUrl() ?>";
     function getBaseUrl(){ return BASE_URL; }
 
-    const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
-    const API_BASE = USE_LOCAL ? 'http://localhost:3000/api' : '';
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const USE_LOCAL = IS_LOCAL;
+    const API_BASE = USE_LOCAL ? 'http://localhost:3000/api' : 'https://pointage-oeax.onrender.com/api';
     async function apiGet(path){ const r=await fetch(API_BASE+path); if(!r.ok) throw new Error(r.statusText); return r.json(); }
     async function apiPost(path, body){
       const r=await fetch(API_BASE+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
@@ -835,8 +835,8 @@
       const df = document.getElementById('valDateFrom')?.value || '';
       const dt = document.getElementById('valDateTo')?.value || '';
       const periodText = (df||dt)
-        ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
-        : 'Période : toutes dates';
+        ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` :
+        'Période : toutes dates';
       const salText = 'Salarié : ' + (currentUser || '');
       const genDate = new Date();
       const genText = 'Exporté le : ' + fmtDateDisplay(genDate.toISOString().slice(0,10)) + ' ' + genDate.toTimeString().slice(0,5);
@@ -1444,8 +1444,7 @@
         const sal = document.getElementById('histSalarie').value || '';
         const camp = document.getElementById('histCamping').value || '';
         const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
-          : 'Période : toutes dates';
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` : 'Période : toutes dates';
         const salText = 'Salarié : ' + (sal||'Tous');
         const campText = 'Camping : ' + (camp||'Tous');
         const genDate = new Date();
