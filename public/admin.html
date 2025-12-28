@@ -96,14 +96,10 @@
     input:checked + .slider{background:#2563eb;}
     input:checked + .slider:before{transform:translateX(24px);}
     .today-col{background:#fff7d6 !important;}
-    /* Auth gate */
-    #auth-guard{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(255,255,255,0.92);z-index:5000;font-weight:700;color:#0f172a;}
   </style>
 </head>
 
-<body style="display:none;">
-  <div id="auth-guard">Vérification de l'accès…</div>
-
+<body>
   <div class="grid">
     <div class="card">
       <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
@@ -266,7 +262,6 @@
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
-    const ROLE_REQUIRED = 'admin'; // rôle attendu pour accéder à cette page
 
     let currentUser = '';
     let employes = [];
@@ -282,10 +277,7 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){
-      try{ localStorage.removeItem('userLogin'); }catch(e){}
-      window.location.href = 'index.html';
-    }
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -298,59 +290,11 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
-    async function fetchJSON(url, options){
-      const res = await fetch(url, options || {});
-      if(!res.ok) throw new Error(res.status+" "+res.statusText);
-      return res.json();
-    }
+    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
     async function apiGet(path){ return fetchJSON(API_BASE+path); }
-    async function apiPost(path, body){
-      return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) });
-    }
+    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
 
-    // --- Sécurité front : vérifie l'authentification et le rôle avant d'afficher la page
-    async function ensureAuthenticated(){
-      const guard = document.getElementById('auth-guard');
-      const redirectToLogin = (msg) => {
-        if(guard){ guard.textContent = msg || 'Redirection vers la page de connexion...'; guard.style.display='flex'; }
-        setTimeout(()=>{ window.location.href = 'index.html'; }, 600);
-      };
-
-      let login = '';
-      const params = new URLSearchParams(window.location.search);
-      login = params.get('u') || '';
-      if(!login){
-        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      if(!login){
-        redirectToLogin("Session manquante. Merci de vous reconnecter.");
-        return Promise.reject(new Error("Unauthenticated"));
-      }
-
-      try{
-        const role = await apiPost("/getRoleForLogin", { login });
-        if(!role || role.toLowerCase() !== ROLE_REQUIRED){
-          redirectToLogin("Accès refusé (rôle requis: admin).");
-          return Promise.reject(new Error("Forbidden"));
-        }
-        currentUser = login;
-        if(guard) guard.style.display='none';
-        document.body.style.display='';
-        return true;
-      }catch(e){
-        redirectToLogin("Erreur de vérification. Merci de vous reconnecter.");
-        return Promise.reject(e);
-      }
-    }
-
-    function toast(msg, ok=true){
-      const el=document.getElementById('toast');
-      if(!el) return;
-      el.textContent=msg;
-      el.style.background = ok ? "#16a34a" : "#d32f2f";
-      el.style.display='inline-flex';
-      setTimeout(()=> el.style.display='none', 2400);
-    }
+    function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
     function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
 
     function openArchiveModal(){}
@@ -358,10 +302,47 @@
     function onClickExportArchive(btn){}
     function onClickCleanApp(btn){}
 
-    async function initApp(){
-      // sécurité en premier
-      await ensureAuthenticated();
+    // --- Sécurité frontend : guard accès admin ---
+    const ALLOWED_ROLES = ['admin','administrateur'];
+    function redirectToLogin() {
+      try { localStorage.removeItem('userLogin'); } catch(e){}
+      window.location.href = 'index.html';
+    }
+    async function fetchRole(login) {
+      if (!login) return null;
+      try {
+        const r = await apiPost('/getRoleForLogin', { login });
+        return r;
+      } catch(e) {
+        return null;
+      }
+    }
+    async function ensureAuthenticatedAdminPage() {
+      let login = '';
+      const params = new URLSearchParams(window.location.search);
+      login = params.get('u') || '';
+      if (!login) {
+        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
+      }
+      if (!login) { redirectToLogin(); return null; }
 
+      const role = await fetchRole(login);
+      if (!role || !ALLOWED_ROLES.includes(String(role).toLowerCase())) {
+        redirectToLogin();
+        return null;
+      }
+      try { localStorage.setItem('userLogin', login); } catch(e){}
+      return login;
+    }
+    // -------------------------------------------------
+
+    async function initApp(){
+      const login = await ensureAuthenticatedAdminPage();
+      if (!login) return; // redirection effectuée
+      currentUser = login;
+      const params = new URLSearchParams(window.location.search);
+      const qpUser = params.get('u') || '';
+      if (qpUser) currentUser = qpUser;
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
@@ -383,8 +364,8 @@
     function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
     function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
     function getRange(){
-      if(viewMode==='week'){ const s=startOfWeek(anchorDate); const e=addDays(s,6); return {start:s,end:e,label:fmtDateLocal(s)+' \u2192 '+fmtDateLocal(e)}; }
-      else if(viewMode==='two'){ const s=startOfWeek(anchorDate); const e=addDays(s,13); return {start:s,end:e,label:fmtDateLocal(s)+' \u2192 '+fmtDateLocal(e)}; }
+      if(viewMode==='week'){ const s=startOfWeek(anchorDate); const e=addDays(s,6); return {start:s,end:e,label:fmtDateLocal(s)+' → '+fmtDateLocal(e)}; }
+      else if(viewMode==='two'){ const s=startOfWeek(anchorDate); const e=addDays(s,13); return {start:s,end:e,label:fmtDateLocal(s)+' → '+fmtDateLocal(e)}; }
       else { const s=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1); const e=new Date(anchorDate.getFullYear(),anchorDate.getMonth()+1,0); const lbl=s.toLocaleString('fr-FR',{month:'long',year:'numeric'}); return {start:s,end: e, label: lbl.charAt(0).toUpperCase()+lbl.slice(1)}; }
     }
     async function loadRangePlanning(){
@@ -1271,7 +1252,7 @@
           const we = addDays(ws, 6);
           const slice = days.filter(x => x >= ws && x <= we);
           weeks.push({
-            label: fmtDateDisplay(fmtDateLocal(slice[0])) + " \u2192 " + fmtDateDisplay(fmtDateLocal(slice[slice.length-1])),
+            label: fmtDateDisplay(fmtDateLocal(slice[0])) + " → " + fmtDateDisplay(fmtDateLocal(slice[slice.length-1])),
             days: slice
           });
           cursor += slice.length;
@@ -1291,8 +1272,8 @@
           if (idx > 0) doc.addPage();
           let startY = 24;
 
-          const labelClean = (label || '').replace(/\u2192/g,'au').replace(/…/g,'...');
-          const weekLabelClean = (week.label || '').replace(/\u2192/g,'au').replace(/…/g,'...');
+          const labelClean = (label || '').replace(/→/g,'au').replace(/…/g,'...');
+          const weekLabelClean = (week.label || '').replace(/→/g,'au').replace(/…/g,'...');
 
           doc.setFontSize(14);
           doc.text('Planning équipe', 16, startY);
