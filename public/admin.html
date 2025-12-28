@@ -274,7 +274,7 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'INDEX.html'; }
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
