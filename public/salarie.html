@@ -163,7 +163,7 @@
       background:#fff;
     }
     .table-responsive-taches table{
-      min-width:720px; /* pour voir toutes les colonnes */
+      min-width:720px;
       width:auto;
     }
   </style>
@@ -235,7 +235,7 @@
       <label>Au
         <input type="date" id="uDateTo">
       </label>
-      <div class="actions" style="margin-top:12px.">
+      <div class="actions" style="margin-top:12px;">
         <button class="small" onclick="chargerMesTaches()">Actualiser</button>
       </div>
       <div id="tachesContent" class="muted" style="margin-top:10px;">
@@ -286,7 +286,7 @@
 
   <!-- Planning -->
   <div id="planningPanel" aria-hidden="true">
-    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px.">
+    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
       <strong id="planningTitle" style="font-size:16px;">Planning de l'équipe</strong>
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserPlanning()" style="padding:6px 8px; font-size:12px;">Actualiser</button>
@@ -294,7 +294,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px.">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -430,7 +430,6 @@
   </template>
 
   <script>
-    // --- Config API Render / fallback local ---
     const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
     const API_BASE = USE_LOCAL
       ? ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
@@ -471,38 +470,38 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    function redirectToLogin(){
-      try{ localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){}
+    function ensureAuth(expectedRole){
+      const urlUser = new URLSearchParams(window.location.search).get('u') || '';
+      let saved = '';
+      try { saved = localStorage.getItem('userLogin') || ''; } catch(e){}
+      const login = urlUser || saved;
+      if (!login) { forceLogout(); return; }
+      // Si l'URL et le localStorage diffèrent, on refuse
+      if (urlUser && saved && urlUser !== saved) { forceLogout(); return; }
+      // Vérification du rôle attendu
+      apiPost('/getRoleForLogin', { login })
+        .then(role => {
+          const r = (role||'').toLowerCase();
+          const ok = (expectedRole === 'user' && r === 'user') || (expectedRole === 'compta' && r === 'compta') || (expectedRole === 'any');
+          if (!ok) { forceLogout(); }
+          else { currentUser = login; bootstrap(); }
+        })
+        .catch(() => forceLogout());
+    }
+
+    function forceLogout(){
+      try { localStorage.removeItem('userLogin'); } catch(e){}
       window.location.href = 'index.html';
     }
 
-    function ensureAuth(){
-      const storedUser = (()=>{ try{return localStorage.getItem('userLogin')||'';}catch(e){return'';} })();
-      const storedRole = (()=>{ try{return localStorage.getItem('userRole')||'';}catch(e){return'';} })();
-      const params = new URLSearchParams(window.location.search);
-      const urlUser = params.get('u') || '';
-      // Doit avoir user + rôle et rôle "user"
-      if(!storedUser || !storedRole) redirectToLogin();
-      if(urlUser && urlUser !== storedUser) redirectToLogin();
-      if(!urlUser) {
-        // force query param pour cohérence
-        window.location.replace(window.location.pathname + '?u=' + encodeURIComponent(storedUser));
-        return false;
-      }
-      if(storedRole !== 'user') redirectToLogin();
-      currentUser = storedUser;
-      return true;
-    }
-
     window.onload = function(){
-      if(!ensureAuth()) return;
+      ensureAuth('user');
+    };
+
+    function bootstrap(){
       const params = new URLSearchParams(window.location.search);
       currentUser = params.get('u') || currentUser || '';
-      if (!currentUser) {
-        document.getElementById('userLabel').textContent = '';
-        showError('global', 'Utilisateur non identifié (paramètre manquant).');
-        return;
-      }
+      if (!currentUser) { forceLogout(); return; }
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
@@ -517,7 +516,7 @@
       applyHistoryFilters();    // historique du jour
       chargerTachesAujourdHui();
       actualiserPlanning();     // semaine courante
-    };
+    }
 
     function loadLogoFromCode() {
       if (USE_LOCAL) return;
@@ -1644,11 +1643,12 @@
         .replace(/'/g,'&#39;');
     }
 
-    window.logout = function(){
-      try { localStorage.removeItem('userLogin'); localStorage.removeItem('userRole'); }catch(e){}
+    function logout(){
+      try { localStorage.removeItem('userLogin'); }catch(e){}
       window.location.href = 'index.html';
-    };
+    }
 
+    window.logout = logout;
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
