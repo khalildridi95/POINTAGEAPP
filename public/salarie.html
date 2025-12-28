@@ -19,7 +19,7 @@
     select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:9px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
     textarea{min-height:120px;}
     .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
-    .muted{color:var(--muted);font-size:13px;}
+    .muted{color:#6b7280;font-size:13px;}
     .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
     button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;min-height:32px;}
     button.secondary{background:#666;}
@@ -29,7 +29,7 @@
     .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);}
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .footer-right{color:var(--muted);font-size:13px;}
+    .footer-right{color:#6b7280;font-size:13px;}
 
     /* Historique */
     #historyPanel{
@@ -163,7 +163,7 @@
       background:#fff;
     }
     .table-responsive-taches table{
-      min-width:720px;
+      min-width:720px; /* pour voir toutes les colonnes */
       width:auto;
     }
   </style>
@@ -322,7 +322,7 @@
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Actualiser</button>
         <button class="small" onclick="exportValidesPDF()" style="padding:6px 8px; font-size:12px; min-height:28px;">Exporter PDF</button>
-        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Fermer</button>
+        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px;">Fermer</button>
       </div>
     </div>
 
@@ -430,6 +430,7 @@
   </template>
 
   <script>
+    // --- Config API Render / fallback local ---
     const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
     const API_BASE = USE_LOCAL
       ? ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
@@ -470,38 +471,51 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    function ensureAuth(expectedRole){
-      const urlUser = new URLSearchParams(window.location.search).get('u') || '';
-      let saved = '';
-      try { saved = localStorage.getItem('userLogin') || ''; } catch(e){}
-      const login = urlUser || saved;
-      if (!login) { forceLogout(); return; }
-      // Si l'URL et le localStorage diffèrent, on refuse
-      if (urlUser && saved && urlUser !== saved) { forceLogout(); return; }
-      // Vérification du rôle attendu
-      apiPost('/getRoleForLogin', { login })
-        .then(role => {
-          const r = (role||'').toLowerCase();
-          const ok = (expectedRole === 'user' && r === 'user') || (expectedRole === 'compta' && r === 'compta') || (expectedRole === 'any');
-          if (!ok) { forceLogout(); }
-          else { currentUser = login; bootstrap(); }
-        })
-        .catch(() => forceLogout());
-    }
-
-    function forceLogout(){
+    // --- Sécurité frontend : guard accès salarié ---
+    const ALLOWED_ROLE = 'user';
+    function redirectToLogin() {
       try { localStorage.removeItem('userLogin'); } catch(e){}
       window.location.href = 'index.html';
     }
-
-    window.onload = function(){
-      ensureAuth('user');
-    };
-
-    function bootstrap(){
+    async function fetchRole(login) {
+      if (!login) return null;
+      if (USE_LOCAL) {
+        try { return await apiPost('/getRoleForLogin', { login }); } catch(e){ return null; }
+      }
+      return new Promise((resolve) => {
+        try {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(() => resolve(null))
+            .getRoleForLogin(login);
+        } catch(e) { resolve(null); }
+      });
+    }
+    async function ensureAuthenticatedUserPage() {
+      let login = '';
       const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || currentUser || '';
-      if (!currentUser) { forceLogout(); return; }
+      login = params.get('u') || '';
+      if (!login) {
+        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
+      }
+      if (!login) { redirectToLogin(); return null; }
+
+      const role = await fetchRole(login);
+      if (role && role.toLowerCase() !== ALLOWED_ROLE) {
+        // Empêche l'accès aux pages non autorisées (admin/compta)
+        redirectToLogin();
+        return null;
+      }
+      try { localStorage.setItem('userLogin', login); } catch(e){}
+      return login;
+    }
+    // -------------------------------------------------
+
+    window.onload = async function(){
+      const login = await ensureAuthenticatedUserPage();
+      if (!login) return; // redirect already done
+      const params = new URLSearchParams(window.location.search);
+      currentUser = params.get('u') || login;
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
@@ -516,7 +530,7 @@
       applyHistoryFilters();    // historique du jour
       chargerTachesAujourdHui();
       actualiserPlanning();     // semaine courante
-    }
+    };
 
     function loadLogoFromCode() {
       if (USE_LOCAL) return;
@@ -1330,11 +1344,15 @@
       const camps = new Set();
       for(let i=1;i<cachedHistory.length;i++){
         const row = cachedHistory[i];
-        if(historyHeaderIndices.nom>=0) names.add(row[historyHeaderIndices.nom]||'');
-        if(historyHeaderIndices.camping>=0) camps.add(row[historyHeaderIndices.camping]||'');
+        if(historyHeaderIndices.nom>=0) names.add((row[historyHeaderIndices.nom]||'').toString().trim());
+        if(historyHeaderIndices.camping>=0) camps.add((row[historyHeaderIndices.camping]||'').toString().trim());
       }
-      Array.from(names).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ if(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); }});
-      Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
+      Array.from(names).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{
+        const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o);
+      });
+      Array.from(camps).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{
+        const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o);
+      });
     }
 
     function applyHistoryFilters(){
@@ -1643,12 +1661,8 @@
         .replace(/'/g,'&#39;');
     }
 
-    function logout(){
-      try { localStorage.removeItem('userLogin'); }catch(e){}
-      window.location.href = 'index.html';
-    }
+    window.logout = function(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; };
 
-    window.logout = logout;
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
