@@ -59,33 +59,17 @@
   </div>
 
   <script>
-    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-      ? "http://localhost:3000/api"
-      : "https://pointage-oeax.onrender.com/api";
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
 
     let loadTimer=null, loadProgress=0;
 
     window.onload = function(){
       chargerIdentifiants();
-      // Si déjà connecté, on vérifie le rôle et on redirige vers la page autorisée
-      const saved = getSavedLogin();
-      if (saved) {
-        verifierRoleEtRediriger(saved);
-      }
     };
 
-    function getSavedLogin(){
-      try { return localStorage.getItem('userLogin') || ''; } catch(e){ return ''; }
-    }
-    function saveLogin(u){
-      try { localStorage.setItem('userLogin', u); } catch(e){}
-    }
-    function clearLogin(){
-      try { localStorage.removeItem('userLogin'); } catch(e){}
-    }
-
     async function fetchJSON(url, options){
-      const res = await fetch(url, options || {});
+      const res = await fetch(url, { credentials: "include", ...options });
       if(!res.ok) throw new Error(res.status+" "+res.statusText);
       return res.json();
     }
@@ -122,7 +106,7 @@
     function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); }
     function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
 
-    function seConnecter(){
+    async function seConnecter(){
       clearAllErrors();
       const btn=document.getElementById('btnLogin');
       const login=document.getElementById('login').value;
@@ -138,51 +122,23 @@
       startLoading('Validation des accès...');
       if(btn) btn.disabled=true;
 
-      fetchJSON(API_BASE + "/checkLogin", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ login, password: pass })
-      })
-      .then(ok=>{
-        if(ok){
-          return fetchJSON(API_BASE + "/getRoleForLogin", {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({ login })
-          }).then(role=>{
-            saveLogin(login);
-            stopLoading(true);
-            redirigerSelonRole(login, role);
-          });
-        } else {
-          stopLoading(false);
-          if(loginMsg){ loginMsg.textContent='Mot de passe incorrect'; loginMsg.style.display='block'; }
-          if(btn) btn.disabled=false;
-        }
-      })
-      .catch(()=>{
+      try{
+        const resp = await fetchJSON(API_BASE + "/login", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ login, password: pass })
+        });
+        stopLoading(true);
+        try{ localStorage.setItem('userLogin', resp.nom); }catch(e){}
+        const role = (resp.role || "user").toLowerCase();
+        if(role==='admin') window.location.href = "./admin.html";
+        else if(role==='compta') window.location.href = "./validation.html";
+        else window.location.href = "./salarie.html";
+      }catch(e){
         stopLoading(false);
-        if(loginMsg){ loginMsg.textContent='Erreur vérification'; loginMsg.style.display='block'; }
+        if(loginMsg){ loginMsg.textContent='Mot de passe incorrect ou erreur serveur'; loginMsg.style.display='block'; }
         if(btn) btn.disabled=false;
-      });
-    }
-
-    function redirigerSelonRole(login, role){
-      const r = (role||'').toLowerCase();
-      if (r === 'admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
-      else if (r === 'compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
-      else window.location.href = "./salarie.html?u="+encodeURIComponent(login);
-    }
-
-    // Vérification post-login (si utilisateur revient avec un localStorage)
-    function verifierRoleEtRediriger(login){
-      fetchJSON(API_BASE + "/getRoleForLogin", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ login })
-      })
-      .then(role=>{ redirigerSelonRole(login, role); })
-      .catch(()=>{ clearLogin(); });
+      }
     }
   </script>
 </body>
