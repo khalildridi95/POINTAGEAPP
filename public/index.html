@@ -59,7 +59,8 @@
   </div>
 
   <script>
-    const API_BASE = "http://localhost:3000/api";
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const API_BASE = IS_LOCAL ? 'http://localhost:3000/api' : 'https://pointage-oeax.onrender.com/api';
 
     let loadTimer=null, loadProgress=0;
 
@@ -137,7 +138,7 @@
             stopLoading(true);
             if(role==='admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
             else if(role==='compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
-            else window.location.href = "./salarie.html?u="+encodeURIComponent(login); // à créer si besoin
+            else window.location.href = "./salarie.html?u="+encodeURIComponent(login);
           });
         } else {
           stopLoading(false);
