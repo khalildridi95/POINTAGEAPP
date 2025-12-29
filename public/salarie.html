@@ -4,42 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>PCELEC</title>
-
-  <!-- Garde-fou d’authentification : accepte param ?u= ou localStorage; redirige si rien -->
-  <script>
-    (function () {
-      const params = new URLSearchParams(location.search);
-      const paramUserRaw = (params.get('u') || '').trim();
-      const paramUserLc  = paramUserRaw.toLowerCase();
-
-      let storedUser = '';
-      try { storedUser = (localStorage.getItem('userLogin') || '').trim(); } catch (e) {}
-      const storedUserLc = storedUser.toLowerCase();
-
-      let effectiveUser = '';
-
-      if (paramUserRaw && !storedUser) {
-        effectiveUser = paramUserRaw;
-        try { localStorage.setItem('userLogin', effectiveUser); } catch (e) {}
-      } else if (paramUserRaw && storedUser && paramUserLc !== storedUserLc) {
-        effectiveUser = paramUserRaw;
-        try { localStorage.setItem('userLogin', effectiveUser); } catch (e) {}
-      } else if (paramUserRaw) {
-        effectiveUser = paramUserRaw;
-      } else if (storedUser) {
-        effectiveUser = storedUser;
-      }
-
-      if (!effectiveUser) {
-        location.replace('index.html');
-        return;
-      }
-
-      window.__APP_AUTH_OK = true;
-      window.__APP_USER = effectiveUser;
-    })();
-  </script>
-
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
@@ -55,7 +19,7 @@
     select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:9px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
     textarea{min-height:120px;}
     .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
-    .muted{color:#6b7280;font-size:13px;}
+    .muted{color:var(--muted);font-size:13px;}
     .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
     button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;min-height:32px;}
     button.secondary{background:#666;}
@@ -65,7 +29,7 @@
     .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);}
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .footer-right{color:#6b7280;font-size:13px;}
+    .footer-right{color:var(--muted);font-size:13px;}
 
     /* Historique */
     #historyPanel{
@@ -483,7 +447,7 @@
       const r = await fetch(API_BASE + path,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(body||{})
+        body:JSON.stringify(body||{})
       });
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
@@ -508,13 +472,16 @@
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
     window.onload = function(){
-      if (!window.__APP_AUTH_OK) {
-        const err = document.getElementById('err_global');
-        if (err) { err.textContent = 'Session expirée ou non authentifiée. Redirection...'; err.style.display = 'block'; }
+      const params = new URLSearchParams(window.location.search);
+      currentUser = params.get('u') || '';
+      if (!currentUser) {
+        try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){}
+      }
+      if (!currentUser) {
+        document.getElementById('userLabel').textContent = '';
+        showError('global', 'Utilisateur non identifié (paramètre manquant).');
         return;
       }
-      currentUser = window.__APP_USER || '';
-
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
