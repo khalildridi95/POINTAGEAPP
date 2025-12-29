@@ -1,6 +1,7 @@
 // Ajoute en haut du fichier :
 import xlsx from "xlsx";
 import session from "express-session";
+import SQLiteStore from 'connect-sqlite3';
 
 // Backend local pour remplacer Google Apps Script
 // Démarrage : node server.js (port 3000 par défaut)
@@ -140,14 +141,16 @@ app.use(cors({
 app.use(bodyParser.json());
 
 // --- Session ---
+const SqliteStore = SQLiteStore(session);
 app.use(session({
   secret: process.env.SESSION_SECRET || 'pcelec-secret-key-change-in-prod',
   resave: false,
   saveUninitialized: false,
+  store: new SqliteStore({ db: 'sessions.db', dir: __dirname }),
   cookie: {
-    secure: false, // true si HTTPS
+    secure: false, // true if HTTPS
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 1 jour
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
   }
 }));
 
