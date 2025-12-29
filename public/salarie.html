@@ -4,6 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>PCELEC</title>
+
+  <!-- Garde-fou immédiat pour éviter le flash : redirige avant rendu si non authentifié -->
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const paramUser = (params.get('u') || '').toLowerCase();
+      let storedUser = '';
+      try { storedUser = (localStorage.getItem('userLogin') || '').toLowerCase(); } catch (e) {}
+
+      if (!storedUser || (paramUser && paramUser !== storedUser)) {
+        location.replace('index.html');
+        return;
+      }
+      // Auth OK pour le reste du script
+      window.__APP_AUTH_OK = true;
+      window.__APP_USER = storedUser;
+    })();
+  </script>
+
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
@@ -246,7 +265,7 @@
 
   <!-- Historique -->
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
+    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px.">
       <strong id="historyTitle" style="font-size:16px;">Historique</strong>
       <div style="display:flex;gap:6px;">
         <button id="btnExportPDF" onclick="telechargerPDF()" class="small" style="padding:6px 8px; font-size:12px;">Exporter PDF</button>
@@ -254,7 +273,7 @@
       </div>
     </div>
 
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px.">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
       <label style="font-size:12px;max-width:140px;">De
         <input type="date" id="histDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -472,17 +491,11 @@
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
     window.onload = function(){
-      const params = new URLSearchParams(window.location.search);
-      const paramUser = params.get('u') || '';
-      let storedUser = '';
-      try { storedUser = localStorage.getItem('userLogin') || ''; } catch(e){ storedUser=''; }
-
-      // Sécurité : il faut un user en localStorage, et s'il y a un param u il doit matcher.
-      if (!storedUser || (paramUser && paramUser.toLowerCase() !== storedUser.toLowerCase())) {
-        window.location.href = 'index.html';
+      if (!window.__APP_AUTH_OK) {
+        // Sécurité : si le garde-fou a décidé de rediriger, on ne fait rien ici.
         return;
       }
-      currentUser = storedUser; // on fait confiance uniquement au stockage local
+      currentUser = window.__APP_USER || '';
 
       document.getElementById('userLabel').textContent = currentUser;
 
