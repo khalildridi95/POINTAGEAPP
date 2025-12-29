@@ -31,7 +31,7 @@
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Fenêtres fixes et basses (fermées par défaut) */
+    /* Panneaux modaux */
     #historyPanel{
       position:fixed; left:0; right:0;
       top:80px; bottom:70px;
@@ -42,14 +42,12 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none;
-      z-index:50;
+      display:none; z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
       box-sizing:border-box;
-      flex-direction:column;
-      gap:10px;
+      display:flex; flex-direction:column; gap:10px;
     }
     #planningPanel{
       position:fixed; left:0; right:0;
@@ -61,14 +59,12 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none;
-      z-index:50;
+      display:none; z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
       box-sizing:border-box;
-      flex-direction:column;
-      gap:10px;
+      display:flex; flex-direction:column; gap:10px;
     }
     #validesPanel{
       position:fixed; left:0; right:0;
@@ -80,18 +76,16 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none;
-      z-index:50;
+      display:none; z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
       font-size:12px;
       touch-action:pan-y;
       box-sizing:border-box;
-      flex-direction:column;
-      gap:10px;
+      display:flex; flex-direction:column; gap:10px;
     }
 
     /* Scroll interne */
-    .panel-body-scroll{
+    .panel-body{
       flex:1;
       min-height:0;
       overflow:auto;
@@ -106,8 +100,8 @@
     .h-scrollbar::-webkit-scrollbar{height:var(--scrollbar-size);}
     .h-scrollbar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px;}
     .h-scrollbar-inner{height:1px;}
-    .table-wrap{overflow:auto;max-height:100%;-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:24px;}
-    table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:140px;}
+    table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;padding-bottom:60px;}
     th,td{border:8px solid #eee;padding:10px;text-align:left}
     tbody tr:nth-child(odd){background:#ffffff;}
     tbody tr:nth-child(even){background:#e0f2ff;}
@@ -286,7 +280,7 @@
 
   <!-- Historique -->
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
       <strong id="historyTitle" style="font-size:16px;">Historique</strong>
       <div style="display:flex;gap:6px;">
         <button id="btnExportPDF" onclick="telechargerPDF()" class="small" style="padding:6px 8px; font-size:12px;">Exporter PDF</button>
@@ -294,7 +288,7 @@
       </div>
     </div>
 
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px;">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
       <label style="font-size:12px;max-width:140px;">De
         <input type="date" id="histDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -321,14 +315,14 @@
       </div>
     </div>
 
-    <div class="panel-body-scroll">
-      <div id="historyContent"><div class="muted">Chargement...</div></div>
+    <div class="panel-body">
+      <div id="historyContent" style="padding-top:8px;"><div class="muted">Chargement...</div></div>
     </div>
   </div>
 
   <!-- Planning -->
   <div id="planningPanel" aria-hidden="true">
-    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
       <strong id="planningTitle" style="font-size:16px;">Planning de l'équipe</strong>
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserPlanning()" style="padding:6px 8px; font-size:12px;">Actualiser</button>
@@ -336,7 +330,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -354,14 +348,14 @@
       </div>
     </div>
 
-    <div class="panel-body-scroll">
-      <div id="planningContent"><div class="muted">Chargement...</div></div>
+    <div class="panel-body">
+      <div id="planningContent" style="padding-top:8px;"><div class="muted">Chargement...</div></div>
     </div>
   </div>
 
   <!-- Pointages validés -->
   <div id="validesPanel" aria-hidden="true">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <strong style="font-size:16px;">Mes pointages validés</strong>
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Actualiser</button>
@@ -370,7 +364,7 @@
       </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
       <label style="font-size:12px;">De
         <input type="date" id="valDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -383,9 +377,9 @@
       </div>
     </div>
 
-    <div id="valStatus" class="muted" style="margin-bottom:6px;">Choisissez des dates puis cliquez sur Appliquer.</div>
-    <div class="panel-body-scroll">
-      <div id="valContent" class="table-wrap" style="max-height:100%;">
+    <div id="valStatus" class="muted" style="margin-bottom:8px;">Choisissez des dates puis cliquez sur Appliquer.</div>
+    <div class="panel-body">
+      <div id="valContent" class="table-wrap" style="overflow:auto;max-height:60vh;">
         <div class="muted">Aucune donnée.</div>
       </div>
     </div>
@@ -857,7 +851,7 @@
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('validesPanel');
       if(panel){
-        panel.style.display='flex'; /* important pour flex child */
+        panel.style.display='block';
         panel.setAttribute('aria-hidden','false');
         document.getElementById('fixedFooter').style.display = 'none';
       }
@@ -1332,7 +1326,7 @@
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('historyPanel');
-      panel.style.display='flex'; /* important pour flex child */
+      panel.style.display='block';
       panel.setAttribute('aria-hidden','false');
       document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
       document.getElementById('fixedFooter').style.display = 'none';
@@ -1441,7 +1435,7 @@
         if(idxDate>=0 && (dateFrom || dateTo)){
           const cd = parseCellDate(r[idxDate]); if(!cd) return false;
           if(dateFrom && cd < dateFrom) ok = false;
-          ifdateTo && cd > dateTo) ok = false;
+          if(dateTo && cd > dateTo) ok = false;
         }
         if(idxNom>=0 && sal){ if((r[idxNom]||'').toString().trim().toLowerCase() !== sal.toLowerCase()) ok = false; }
         if(idxCamp>=0 && camp){ if((r[idxCamp]||'').toString().trim().toLowerCase() !== camp.toLowerCase()) ok = false; }
@@ -1468,7 +1462,7 @@
         cells.forEach(c=>html+='<td>'+escapeHtml(fmtHHMM(c)||'')+'</td>');
         html+='</tr>';
       }
-      html+='</tbody></table></div>';
+      html+='</tbody></table><div style="height:120px;"></div></div>';
       content.innerHTML=html;
 
       const wrap = content.querySelector('.table-wrap');
@@ -1501,7 +1495,7 @@
         const salText='Salarié : '+(sal||'Tous'); const campText='Camping : '+(campSel||'Tous'); const genText='Généré le : '+fmtDateDisplay(meta.iso)+' '+meta.hm; const byText='Exporté par : '+(exportedBy||'—');
         doc.setFontSize(14); doc.text('Rapport Pointages',16,22);
         doc.setFontSize(11); doc.text(periodText,16,40); doc.text(salText,16,56); doc.text(campText,16,72); doc.text(genText,16,88); doc.text(byText,16,104);
-        doc.autoTable({ head:[headForPdf.map(h=>h||'')], body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')), styles:{fontSize:8,cellPadding:4}, headStyles:{ fillColor:[37,99,235], textColor:255 }, alternateRowStyles:{ fillColor:[240,245,255] }, margin:{ top:128, bottom:16, left:16, right:16 } });
+        doc.autoTable({ head:[headForPdf.map(h=>h||'')], body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')), styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:[37,99,235],textColor:255}, alternateRowStyles:{fillColor:[240,245,255]}, margin:{top:128,bottom:16,left:16,right:16} });
         doc.save('historique_pointages.pdf');
       }catch(e){ alert(e && e.message ? e.message : e); }
       finally{ if(btn){btn.disabled=false;btn.textContent='Exporter PDF';} }
@@ -1530,7 +1524,7 @@
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       setWeekPlanningDates();
       const panel=document.getElementById('planningPanel');
-      panel.style.display='flex'; /* important pour flex child */
+      panel.style.display='block';
       panel.setAttribute('aria-hidden','false');
       document.getElementById('fixedFooter').style.display = 'none';
       document.getElementById('planningContent').innerHTML='<div class="muted">Chargement...</div>';
@@ -1632,7 +1626,7 @@
 
     function fermerPlanning(){
       const meta = document.querySelector('meta[name="viewport"]');
-      if (meta) meta.setAttribute('content','width=device-width, initial-scale=1, user-scalable=no');
+      if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=no');
       const panel=document.getElementById('planningPanel');
       panel.style.display='none';
       panel.setAttribute('aria-hidden','true');
