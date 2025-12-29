@@ -129,7 +129,6 @@
             <option value="month">1 mois</option>
           </select>
           <button class="btn-primary" onclick="openTaskModal()">Ajouter une tâche</button>
-          <button class="ghost" onclick="loadRangePlanning()" title="Actualiser le planning">Actualiser</button>
           <button class="ghost" onclick="savePlanning()">Enregistrer le planning</button>
           <button class="btn-primary" onclick="exportPlanningPDFLocal()">Exporter le planning en PDF</button>
           <span id="planStatus" class="muted"></span>
@@ -303,25 +302,47 @@
     function onClickExportArchive(btn){}
     function onClickCleanApp(btn){}
 
-    // --- Sécurité minimale côté front : refuse l'accès si non authentifié ---
-    function requireAuth() {
-      const params = new URLSearchParams(window.location.search);
-      let user = params.get('u') || '';
-      if (!user) {
-        try { user = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      if (!user) {
-        // Pas d'utilisateur -> redirection vers la page de login
-        window.location.href = 'index.html';
+    // --- Sécurité frontend : guard accès admin ---
+    const ALLOWED_ROLES = ['admin','administrateur'];
+    function redirectToLogin() {
+      try { localStorage.removeItem('userLogin'); } catch(e){}
+      window.location.href = 'index.html';
+    }
+    async function fetchRole(login) {
+      if (!login) return null;
+      try {
+        const r = await apiPost('/getRoleForLogin', { login });
+        return r;
+      } catch(e) {
         return null;
       }
-      return user;
     }
+    async function ensureAuthenticatedAdminPage() {
+      let login = '';
+      const params = new URLSearchParams(window.location.search);
+      login = params.get('u') || '';
+      if (!login) {
+        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
+      }
+      if (!login) { redirectToLogin(); return null; }
+
+      const role = await fetchRole(login);
+      if (!role || !ALLOWED_ROLES.includes(String(role).toLowerCase())) {
+        redirectToLogin();
+        return null;
+      }
+      try { localStorage.setItem('userLogin', login); } catch(e){}
+      return login;
+    }
+    // -------------------------------------------------
 
     async function initApp(){
-      const user = requireAuth();
-      if (!user) return; // stop init if not authenticated
-      currentUser = user;
+      const login = await ensureAuthenticatedAdminPage();
+      if (!login) return; // redirection effectuée
+      currentUser = login;
+      const params = new URLSearchParams(window.location.search);
+      const qpUser = params.get('u') || '';
+      if (qpUser) currentUser = qpUser;
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
