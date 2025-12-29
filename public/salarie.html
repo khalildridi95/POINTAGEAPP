@@ -31,37 +31,38 @@
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Historique */
-    #historyPanel{
-      position:fixed; left:0; right:0; bottom:60px;
-      max-height:calc(100vh - 180px);
-      margin-top:12px;
+    /* Fenêtres fixes */
+    #historyPanel,
+    #planningPanel,
+    #validesPanel{
+      position:fixed; left:0; right:0;
+      top:40px; bottom:70px;
+      max-height:calc(100vh - 110px);
       background:var(--card);
       border-radius:16px;
       padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:auto;
-      overscroll-behavior:none;
       display:none; z-index:50;
-      padding-bottom:calc(18px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
+      box-sizing:border-box;
+      overflow:hidden;           /* panneau fixe */
+      display:flex;
+      flex-direction:column;
+      gap:10px;
     }
-    /* Planning */
-    #planningPanel{
-      position:fixed; left:0; right:0; bottom:80px;
-      max-height:calc(100vh - 180px);
-      margin-top:12px;
-      background:var(--card);
-      border-radius:16px;
-      padding:16px;
-      box-shadow:0 24px 90px rgba(2,6,23,0.2);
+    /* Ajuste un peu pour planning et valides (bas déjà plus haut) */
+    #planningPanel{ top:50px; bottom:80px; }
+    #validesPanel{ top:60px; bottom:90px; }
+
+    /* Scroll interne */
+    .panel-body-scroll{
+      flex:1;
+      min-height:0;
       overflow:auto;
-      overscroll-behavior:none;
-      display:none; z-index:50;
-      padding-bottom:calc(18px + env(safe-area-inset-bottom));
-      font-size:11px;
-      touch-action:pan-y;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior:contain;
+      box-sizing:border-box;
     }
 
     .h-scrollbar{
@@ -70,12 +71,13 @@
     .h-scrollbar::-webkit-scrollbar{height:var(--scrollbar-size);}
     .h-scrollbar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px;}
     .h-scrollbar-inner{height:1px;}
-    .table-wrap{overflow:auto;max-height:calc(100vh - 220px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:24px;}
-    table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;padding-bottom:60px;}
+    .table-wrap{overflow:auto;max-height:100%;-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:0;}
+    table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;}
     th,td{border:8px solid #eee;padding:10px;text-align:left}
     tbody tr:nth-child(odd){background:#ffffff;}
     tbody tr:nth-child(even){background:#e0f2ff;}
     th{background:#fbfbfb;position:sticky;top:0}
+
     .entry-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
     .entry-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
     .chantier-block{border:2px dashed #ddd;padding:12px;border-radius:10px;margin-top:12px;}
@@ -250,7 +252,7 @@
 
   <!-- Historique -->
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
+    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;">
       <strong id="historyTitle" style="font-size:16px;">Historique</strong>
       <div style="display:flex;gap:6px;">
         <button id="btnExportPDF" onclick="telechargerPDF()" class="small" style="padding:6px 8px; font-size:12px;">Exporter PDF</button>
@@ -258,7 +260,7 @@
       </div>
     </div>
 
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:4px;">
       <label style="font-size:12px;max-width:140px;">De
         <input type="date" id="histDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -285,12 +287,12 @@
       </div>
     </div>
 
-    <div id="historyContent" style="padding-top:8px;"><div class="muted">Chargement...</div></div>
+    <div class="panel-body-scroll" id="historyContent"><div class="muted">Chargement...</div></div>
   </div>
 
   <!-- Planning -->
   <div id="planningPanel" aria-hidden="true">
-    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
+    <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;">
       <strong id="planningTitle" style="font-size:16px;">Planning de l'équipe</strong>
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserPlanning()" style="padding:6px 8px; font-size:12px;">Actualiser</button>
@@ -298,7 +300,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:4px;">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -316,12 +318,12 @@
       </div>
     </div>
 
-    <div id="planningContent" style="padding-top:8px;"><div class="muted">Chargement...</div></div>
+    <div class="panel-body-scroll" id="planningContent"><div class="muted">Chargement...</div></div>
   </div>
 
   <!-- Pointages validés -->
-  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 180px);margin-top:12px;background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(18px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+  <div id="validesPanel" aria-hidden="true">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <strong style="font-size:16px;">Mes pointages validés</strong>
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Actualiser</button>
@@ -330,7 +332,7 @@
       </div>
     </div>
 
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:4px;">
       <label style="font-size:12px;">De
         <input type="date" id="valDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -343,8 +345,8 @@
       </div>
     </div>
 
-    <div id="valStatus" class="muted" style="margin-bottom:8px;">Choisissez des dates puis cliquez sur Appliquer.</div>
-    <div id="valContent" class="table-wrap" style="overflow:auto;max-height:60vh;">
+    <div id="valStatus" class="muted" style="margin-bottom:4px;">Choisissez des dates puis cliquez sur Appliquer.</div>
+    <div class="panel-body-scroll" id="valContent" style="overflow:auto;max-height:100%;">
       <div class="muted">Aucune donnée.</div>
     </div>
   </div>
