@@ -60,7 +60,7 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    const API_BASE = IS_LOCAL
       ? "http://localhost:3000/api"
       : "https://pointage-oeax.onrender.com/api";
 
@@ -70,12 +70,21 @@
       chargerIdentifiants();
     };
 
- async function fetchJSON(url, options) {
-  const res = await fetch(url, { credentials: "include", ...(options || {}) });
-  if (res.status === 401) { window.location.href = "index.html"; return; }
-  if (!res.ok) throw new Error(res.status + " " + res.statusText);
-  return res.json();
-}
+    // Helper fetch avec credentials et anti-boucle
+    async function fetchJSON(url, options){
+      const res = await fetch(url, { credentials: "include", ...(options || {}) });
+      if (res.status === 401) {
+        // On est déjà sur la page de login : pas de redirection en boucle
+        const isLoginPage =
+          location.pathname.endsWith("index.html") ||
+          location.pathname === "/" ||
+          location.pathname === "";
+        if (!isLoginPage) window.location.href = "index.html";
+        throw new Error("unauthorized");
+      }
+      if(!res.ok) throw new Error(res.status+" "+res.statusText);
+      return res.json();
+    }
 
     function chargerIdentifiants(){
       const sel = document.getElementById('login');
@@ -109,7 +118,7 @@
     function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); }
     function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
 
-    function seConnecter(){
+    async function seConnecter(){
       clearAllErrors();
       const btn=document.getElementById('btnLogin');
       const login=document.getElementById('login').value;
@@ -125,23 +134,25 @@
       startLoading('Validation des accès...');
       if(btn) btn.disabled=true;
 
-      fetchJSON(API_BASE + "/login", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ login, password: pass })
-      })
-      .then(({ role })=>{
+      try {
+        // Auth principale via /api/login (met le cookie JWT SameSite=None; Secure)
+        const res = await fetchJSON(API_BASE + "/login", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ login, password: pass })
+        });
+        // Sauvegarde locale pour info
         try{ localStorage.setItem('userLogin', login); }catch(e){}
         stopLoading(true);
-        if(role==='admin') window.location.href = "./admin.html";
-        else if(role==='compta') window.location.href = "./validation.html";
-        else window.location.href = "./salarie.html";
-      })
-      .catch(()=>{
+        const role = (res && res.role) || 'user';
+        if(role === 'admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
+        else if(role === 'compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
+        else window.location.href = "./salarie.html?u="+encodeURIComponent(login);
+      } catch (e) {
         stopLoading(false);
-        if(loginMsg){ loginMsg.textContent='Identifiants invalides'; loginMsg.style.display='block'; }
+        if(loginMsg){ loginMsg.textContent='Mot de passe incorrect ou erreur serveur'; loginMsg.style.display='block'; }
         if(btn) btn.disabled=false;
-      });
+      }
     }
   </script>
 </body>
