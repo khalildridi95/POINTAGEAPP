@@ -65,6 +65,8 @@
     .h-scrollbar{
       position:sticky;top:0;z-index:5;height:12px;background:#f1f5f9;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable both-edges;
     }
+    .h-scrollbar::-webkit-scrollbar{height:var(--scrollbar-size);}
+    .h-scrollbar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px;}
     .h-scrollbar-inner{height:1px;}
     .table-wrap{overflow:auto;max-height:calc(100vh - 200px);-webkit-overflow-scrolling:touch;overscroll-behavior:none;width:100%;transform:translateZ(0);margin-bottom:140px;}
     table{min-width:100%;border-collapse:collapse;font-size:12px;width:auto;padding-bottom:60px;}
@@ -250,7 +252,7 @@
       <strong id="historyTitle" style="font-size:16px;">Historique</strong>
       <div style="display:flex;gap:6px;">
         <button id="btnExportPDF" onclick="telechargerPDF()" class="small" style="padding:6px 8px; font-size:12px;">Exporter PDF</button>
-        <button class="secondary small" onclick="fermerHistorique()" style="padding:6px 8px; font-size:12px;">Fermer</button>
+        <button class="secondary small" onclick="fermerHistorique()" style="padding:6px 8px; font-size:12px; min-height:28px;">Fermer</button>
       </div>
     </div>
 
@@ -439,7 +441,7 @@
       : '';
 
     async function apiGet(path){
-      const r = await fetch(API_BASE + path);
+      const r = await fetch(API_BASE + path, { credentials: 'include' });
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
     }
@@ -447,7 +449,8 @@
       const r = await fetch(API_BASE + path,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(body||{})
+        body:JSON.stringify(body||{}),
+        credentials: 'include'
       });
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
@@ -471,20 +474,18 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    function requireUserLogin(){
-      const params = new URLSearchParams(window.location.search);
-      const urlUser = (params.get('u') || '').trim();
-      let stored = '';
-      try { stored = (localStorage.getItem('userLogin') || '').trim(); } catch(e){}
-      const user = urlUser || stored;
-      if (!user) { window.location.href = 'index.html'; return null; }
-      try { localStorage.setItem('userLogin', user); } catch(e){}
-      return user;
-    }
-
     window.onload = function(){
-      const user = requireUserLogin();
-      if (!user) return; // redirection en cours
+      initApp();
+    };
+
+    async function initApp(){
+      // Check session
+      const res = await fetch('/api/session', { credentials: 'include' });
+      const { user } = await res.json();
+      if (!user) {
+        window.location.href = 'index.html';
+        return;
+      }
       currentUser = user;
       document.getElementById('userLabel').textContent = currentUser;
 
@@ -623,10 +624,9 @@
       if(v==null) return '';
       const s=String(v).trim();
       const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-      if(m) return `${m[1].padStart(2,'0')}:${m[2]}`;
-      return s;
+      return m?`${m[1].padStart(2,'0')}:${m[2]}`:s;
     }
-    function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+    function fmtDateLocal(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
     function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
 
     function chargerTachesAujourdHui(){
@@ -907,8 +907,7 @@
           r.validePar||'',
           r.valideLe||'',
           r.commentaire||''
-        ]);
-
+        ].map(sanitizePdfCell));
         doc.autoTable({
           head,
           body,
@@ -1314,11 +1313,11 @@
       const camps = new Set();
       for(let i=1;i<cachedHistory.length;i++){
         const row = cachedHistory[i];
-        if(historyHeaderIndices.nom>=0) names.add(row[historyHeaderIndices.nom]||'');
-        if(historyHeaderIndices.camping>=0) camps.add(row[historyHeaderIndices.camping]||'');
+        if(historyHeaderIndices.nom>=0) names.add((row[historyHeaderIndices.nom]||'').toString().trim());
+        if(historyHeaderIndices.camping>=0) camps.add((row[historyHeaderIndices.camping]||'').toString().trim());
       }
-      Array.from(names).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ if(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); }});
-      Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
+      Array.from(names).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ if(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); }});
+      Array.from(camps).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
     }
 
     function applyHistoryFilters(){
@@ -1377,12 +1376,12 @@
       const filtered = rows.filter(r=>{
         let ok = true;
         if(idxDate>=0 && (dateFrom || dateTo)){
-          const cellDate = parseCellDate(r[idxDate]); if(!cellDate) return false;
-          if(dateFrom && cellDate < dateFrom) ok = false;
-          if(dateTo && cellDate > dateTo) ok = false;
+          const cd = parseCellDate(r[idxDate]); if(!cd) return false;
+          if(dateFrom && cd < dateFrom) ok = false;
+          if(dateTo && cd > dateTo) ok = false;
         }
-        if(idxNom>=0 && sal){ if((r[idxNom]||'').toString() !== sal) ok = false; }
-        if(idxCamp>=0 && camp){ if((r[idxCamp]||'').toString() !== camp) ok = false; }
+        if(idxNom>=0 && sal){ if((r[idxNom]||'').toString().trim().toLowerCase() !== sal.toLowerCase()) ok = false; }
+        if(idxCamp>=0 && camp){ if((r[idxCamp]||'').toString().trim().toLowerCase() !== camp.toLowerCase()) ok = false; }
         return ok;
       });
       return [header].concat(filtered);
@@ -1426,80 +1425,39 @@
       const btn=document.getElementById('btnExportPDF');
       if(btn){btn.disabled=true;btn.textContent='Génération PDF...';}
       try{
-        const data = filterCachedHistory();
-        if(!data || data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
+        const data=filterCachedHistory();
+        if(!data||data.length<=1) throw new Error('Aucune donnée à exporter. Clique Appliquer d\'abord.');
 
         const header=data[0];
-        const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
-        const headForPdf = hasRowIdx ? header.slice(0, -1) : header;
-        const bodyForPdf = data.slice(1).map(r => hasRowIdx ? r.slice(0, -1) : r);
-
-        await ensureJsPDF();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l','pt','a4');
-
-        const df = document.getElementById('histDateFrom').value || '';
-        const dt = document.getElementById('histDateTo').value || '';
-        const sal = document.getElementById('histSalarie').value || '';
-        const camp = document.getElementById('histCamping').value || '';
-        const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
-          : 'Période : toutes dates';
-        const salText = 'Salarié : ' + (sal||'Tous');
-        const campText = 'Camping : ' + (camp||'Tous');
-        const genDate = new Date();
-        const genText = 'Généré le : ' + fmtDateDisplay(fmtDateLocal(genDate)) + ' ' + genDate.toTimeString().slice(0,5);
-
-        doc.setFontSize(14);
-        doc.text('Rapport Pointages', 16, 24);
-        doc.setFontSize(11);
-        doc.text(periodText, 16, 42);
-        doc.text(salText, 16, 58);
-        doc.text(campText, 16, 74);
-        doc.text(genText, 16, 90);
-
-        doc.autoTable({
-          head: [headForPdf.map(h=>h||'')],
-          body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')),
-          styles:{ fontSize:8, cellPadding:4 },
-          headStyles:{ fillColor:[37,99,235], textColor:255 },
-          alternateRowStyles:{ fillColor:[240,245,255] },
-          margin:{ top:110, bottom:24, left:16, right:16 }
-        });
-
+        const hasRowIdx = header[header.length-1]==='ROW_INDEX';
+        const headForPdf=hasRowIdx?header.slice(0,-1):header;
+        const bodyForPdf=data.slice(1).map(r=>hasRowIdx?r.slice(0,-1):r);
+        await ensureJsPDF(); const { jsPDF }=window.jspdf; const doc=new jsPDF('l','pt','a4');
+        const df=document.getElementById('histDateFrom').value||'', dt=document.getElementById('histDateTo').value||'', sal=document.getElementById('histSalarie').value||'', campSel=document.getElementById('histCamping').value||'', meta=nowMeta(), exportedBy=currentUser||'';
+        const periodText=(df||dt)?`Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`:'Période : toutes dates';
+        const salText='Salarié : '+(sal||'Tous'); const campText='Camping : '+(campSel||'Tous'); const genText='Généré le : '+fmtDateDisplay(meta.iso)+' '+meta.hm; const byText='Exporté par : '+(exportedBy||'—');
+        doc.setFontSize(14); doc.text('Rapport Pointages',16,22);
+        doc.setFontSize(11); doc.text(periodText,16,40); doc.text(salText,16,56); doc.text(campText,16,72); doc.text(genText,16,88); doc.text(byText,16,104);
+        doc.autoTable({ head:[headForPdf.map(h=>h||'')], body: bodyForPdf.map(r=>r.map(c=>fmtHHMM(c)||'')), styles:{fontSize:8,cellPadding:4}, headStyles:{fillColor:[37,99,235],textColor:255}, alternateRowStyles:{fillColor:[240,245,255]}, margin:{top:128,bottom:16,left:16,right:16} });
         doc.save('historique_pointages.pdf');
-      }catch(e){
-        showError('global','Erreur PDF: ' + (e.message||e));
-        setTimeout(()=>showError('global',''),4000);
-      }finally{
-        if(btn){btn.disabled=false;btn.textContent='Exporter PDF';}
-      }
+      }catch(e){ alert(e && e.message ? e.message : e); }
+      finally{ if(btn){btn.disabled=false;btn.textContent='Exporter PDF';} }
     }
 
     async function ensureJsPDF() {
-      const needJsPDF = (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined');
-      const needAuto  = (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API?.autoTable);
-      if (!needJsPDF && !needAuto) return;
-      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js', 'jspdf');
-      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js', 'autoTable');
-      if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
-        throw new Error("jsPDF non disponible après chargement.");
-      }
+      const needJsPDF=(typeof window.jspdf==='undefined'||typeof window.jspdf.jsPDF==='undefined');
+      const needAuto=(typeof window.jspdf==='undefined'||!window.jspdf.jsPDF||!window.jspdf.jsPDF.API?.autoTable);
+      if(!needJsPDF&&!needAuto) return;
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
+      await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+      if(typeof window.jspdf==='undefined'||typeof window.jspdf.jsPDF==='undefined') throw new Error("jsPDF non disponible après chargement.");
     }
-    function loadScriptOnce(src, label) {
-      return new Promise((resolve, reject) => {
-        if (label === 'jspdf' && window.jspdf && window.jspdf.jsPDF) return resolve();
-        if (label === 'autoTable' && window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API?.autoTable) return resolve();
-        const existing = document.querySelector(`script[data-src="${src}"]`);
-        if (existing) {
-          existing.addEventListener('load', () => resolve());
-          existing.addEventListener('error', () => reject(new Error('Échec chargement ' + src)));
-          return;
-        }
-        const s = document.createElement('script');
-        s.src = src; s.async = true; s.defer = true; s.dataset.src = src;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Échec chargement ' + src));
+    function loadScriptOnce(src,label){
+      return new Promise((resolve,reject)=>{
+        const existing=document.querySelector(`script[data-src="${src}"]`);
+        if(existing){ existing.addEventListener('load',()=>resolve()); existing.addEventListener('error',()=>reject(new Error('Échec chargement '+src))); return; }
+        const s=document.createElement('script'); s.src=src; s.async=true; s.defer=true; s.dataset.src=src;
+        s.onload=()=>resolve(); s.onerror=()=>reject(new Error('Échec chargement '+src));
         document.head.appendChild(s);
       });
     }
@@ -1627,7 +1585,12 @@
         .replace(/'/g,'&#39;');
     }
 
-    window.logout = function(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; };
+    async function logout(){
+      try {
+        await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      } catch(e) {}
+      window.location.href = 'index.html';
+    }
 
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
