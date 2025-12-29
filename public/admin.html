@@ -69,7 +69,7 @@
     .h-scrollbar{position:sticky; top:0; z-index:5; height:16px; background:#f1f5f9;overflow-x:auto; overflow-y:hidden; scrollbar-gutter:stable both-edges; scrollbar-width: var(--scrollbar-size);}
     .h-scrollbar::-webkit-scrollbar{ height:var(--scrollbar-size); }
     .h-scrollbar::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
-    .h-scrollbar-inner{height:1px;}
+    .h-scrollbar-track{ background:#f8fafc; }
     .history-table-wrap{overflow:auto; max-height:calc(100vh - 220px); -webkit-overflow-scrolling:touch;overscroll-behavior:none; width:100%; transform:translateZ(0); margin-bottom:24px; scrollbar-width: var(--scrollbar-size);}
     .history-table-wrap::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
     .history-table-wrap::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
@@ -258,9 +258,9 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? "http://localhost:3000/api"
-    : "https://pointage-oeax.onrender.com/api";
+    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+      ? "http://localhost:3000/api"
+      : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
     let currentUser = '';
@@ -277,7 +277,12 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
+    function logout(){
+      fetchJSON(API_BASE + "/logout", { method: "POST" }).finally(()=>{
+        try{ localStorage.removeItem('userLogin'); }catch(e){}
+        window.location.href = 'index.html';
+      });
+    }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -290,7 +295,11 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
-    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
+    async function fetchJSON(url, options){
+      const res = await fetch(url, { credentials: "include", ...(options||{}) });
+      if(!res.ok) throw new Error(res.status+" "+res.statusText);
+      return res.json();
+    }
     async function apiGet(path){ return fetchJSON(API_BASE+path); }
     async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
 
