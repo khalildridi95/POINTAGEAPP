@@ -19,7 +19,7 @@
     select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:9px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
     textarea{min-height:120px;}
     .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
-    .muted{color:var(--muted);font-size:13px;}
+    .muted{color:#6b7280;font-size:13px;}
     .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
     button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;min-height:32px;}
     button.secondary{background:#666;}
@@ -294,7 +294,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px.">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -316,7 +316,7 @@
   </div>
 
   <!-- Pointages validés -->
-  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;">
+  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(0,0,0,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <strong style="font-size:16px;">Mes pointages validés</strong>
       <div style="display:flex;gap:6px;">
@@ -430,26 +430,6 @@
   </template>
 
   <script>
-    // --- Auth helpers ---
-    function getStoredToken(){ try { return localStorage.getItem('authToken') || ''; } catch(e){ return ''; } }
-    function parseJwt(token){
-      try { return JSON.parse(atob(token.split('.')[1] || '')); } catch(e){ return null; }
-    }
-    async function ensureAccess(rolesAllowed=['user','admin']){
-      const token = getStoredToken();
-      const payload = token ? parseJwt(token) : null;
-      const role = (payload && payload.role || '').toLowerCase();
-      const login = (payload && payload.login) || '';
-      if(!token || !payload || !rolesAllowed.includes(role)){
-        logout(true);
-        return false;
-      }
-      currentUser = login;
-      currentMatricule = payload.matricule || currentMatricule;
-      try { localStorage.setItem('userLogin', login); } catch(e){}
-      return true;
-    }
-
     // --- Config API Render / fallback local ---
     const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
     const API_BASE = USE_LOCAL
@@ -459,21 +439,15 @@
       : '';
 
     async function apiGet(path){
-      const headers = {};
-      const token = getStoredToken();
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      const r = await fetch(API_BASE + path, { headers });
+      const r = await fetch(API_BASE + path);
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
     }
     async function apiPost(path, body){
-      const headers = {'Content-Type':'application/json'};
-      const token = getStoredToken();
-      if (token) headers['Authorization'] = 'Bearer ' + token;
       const r = await fetch(API_BASE + path,{
         method:'POST',
-        headers,
-        body:JSON.stringify(body||{})
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body||{})
       });
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
@@ -497,21 +471,18 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    window.onload = async function(){
-      const ok = await ensureAccess(['user','admin']);
-      if (!ok) return;
-
+    window.onload = function(){
       const params = new URLSearchParams(window.location.search);
-      const qUser = params.get('u');
-      if (qUser && qUser !== currentUser) currentUser = qUser;
+      currentUser = params.get('u') || '';
       if (!currentUser) {
         try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){}
       }
+      // --- Guard: si aucun user, on renvoie vers la page de connexion
       if (!currentUser) {
-        document.getElementById('userLabel').textContent = '';
-        showError('global', 'Utilisateur non identifié (paramètre manquant).');
+        window.location.href = 'index.html';
         return;
       }
+
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
@@ -1116,7 +1087,7 @@
 
     function setTransferStatus(text, ok){
       const el = document.getElementById('transferStatus');
-      el.textContent = text or '';
+      el.textContent = text || '';
       if (ok === true) { el.className = 'status-text status-green'; }
       else if (ok === false) { el.className = 'status-text status-red'; }
       else { el.className = 'status-text'; }
@@ -1469,7 +1440,8 @@
         const sal = document.getElementById('histSalarie').value || '';
         const camp = document.getElementById('histCamping').value || '';
         const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` : 'Période : toutes dates';
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
+          : 'Période : toutes dates';
         const salText = 'Salarié : ' + (sal||'Tous');
         const campText = 'Camping : ' + (camp||'Tous');
         const genDate = new Date();
@@ -1652,13 +1624,8 @@
         .replace(/'/g,'&#39;');
     }
 
-    function logout(force){
-      try { localStorage.removeItem('userLogin'); localStorage.removeItem('authToken'); }catch(e){}
-      if(force) { window.location.href = 'index.html'; return; }
-      window.location.href = 'index.html';
-    }
+    window.logout = function(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; };
 
-    window.logout = logout;
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
