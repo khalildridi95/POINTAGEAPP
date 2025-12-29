@@ -196,10 +196,11 @@
     }
 #validesPanel .table-wrap{
   flex:1 1 auto;
-  max-height:calc(100vh - 260px); /* ajustez si besoin (entêtes/filters) */
+  max-height:calc(100vh - 320px); /* baisse la valeur pour réduire la hauteur visible */
   overflow:auto;
   -webkit-overflow-scrolling:touch;
-  margin:0; /* pas d’espace inutile en bas */
+  margin:0;
+  padding-bottom:0; /* évite l'espace vide en bas */
 }
   </style>
 </head>
