@@ -9,15 +9,19 @@
   <script>
     (function () {
       const params = new URLSearchParams(location.search);
-      const paramUser = (params.get('u') || '').toLowerCase();
-      let storedUser = '';
-      try { storedUser = (localStorage.getItem('userLogin') || '').toLowerCase(); } catch (e) {}
+      const paramUserLc = (params.get('u') || '').toLowerCase();
 
-      if (!storedUser || (paramUser && paramUser !== storedUser)) {
+      let storedUser = '';
+      try { storedUser = (localStorage.getItem('userLogin') || '').trim(); } catch (e) {}
+      const storedUserLc = storedUser.toLowerCase();
+
+      // Si pas de login stocké, ou paramètre u qui ne matche pas (insensible à la casse), redirection immédiate
+      if (!storedUser || (paramUserLc && paramUserLc !== storedUserLc)) {
         location.replace('index.html');
         return;
       }
-      // Auth OK pour le reste du script
+
+      // Auth OK pour le reste du script (on garde la casse d’origine)
       window.__APP_AUTH_OK = true;
       window.__APP_USER = storedUser;
     })();
@@ -48,7 +52,7 @@
     .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);}
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .footer-right{color:var(--muted);font-size:13px;}
+    .footer-right{color:#var(--muted);font-size:13px;}
 
     /* Historique */
     #historyPanel{
@@ -265,7 +269,7 @@
 
   <!-- Historique -->
   <div id="historyPanel" aria-hidden="true">
-    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px.">
+    <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;margin-top:30px;">
       <strong id="historyTitle" style="font-size:16px;">Historique</strong>
       <div style="display:flex;gap:6px;">
         <button id="btnExportPDF" onclick="telechargerPDF()" class="small" style="padding:6px 8px; font-size:12px;">Exporter PDF</button>
@@ -492,7 +496,6 @@
 
     window.onload = function(){
       if (!window.__APP_AUTH_OK) {
-        // Sécurité : si le garde-fou a décidé de rediriger, on ne fait rien ici.
         return;
       }
       currentUser = window.__APP_USER || '';
