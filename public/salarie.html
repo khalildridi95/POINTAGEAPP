@@ -54,15 +54,14 @@
     }
 
     /* Planning */
-    /* panneau plus petit et on empêche le panneau de défiler (scroll dans la table uniquement) */
     #planningPanel{
       position:fixed; left:0; right:0; bottom:20px;
-      max-height:60vh; /* panneau réduit */
+      max-height:calc(100vh - 180px); /* aligné sur historique */
       background:var(--card);
       border-radius:16px;
       padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:hidden; /* IMPORTANT: éviter le scroll du panneau lui-même */
+      overflow:auto; /* même logique que l'historique */
       overscroll-behavior:none;
       display:none; z-index:50;
       padding-bottom:calc(22px + env(safe-area-inset-bottom));
@@ -71,8 +70,7 @@
     }
     /* le conteneur planning défile maintenant (scroll interne) */
     #planningPanel .planning-container{
-      /* hauteur calculée pour laisser la place au header/filters du panneau */
-      max-height:calc(60vh - 120px);
+      max-height:calc(100vh - 300px); /* aligné sur la réserve de l'historique */
       min-height:120px;
       overflow:auto;
       -webkit-overflow-scrolling:touch;
@@ -108,7 +106,6 @@
     /* Planning table */
     .planning-container{
       position: relative;
-      /* fallback si panneau non ouvert */
       max-height:70vh;
       width:100%;
       box-sizing:border-box;
@@ -189,13 +186,13 @@
     /* Pointages validés - limiter le panneau et le tableau interne */
     #validesPanel{
       position:fixed;left:0;right:0;bottom:20px;
-      max-height:60vh;
+      max-height:calc(100vh - 180px); /* aligné sur historique */
       background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:hidden; /* le panneau ne doit pas défiler, on scrollera dans la table */
-      overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;
+      overflow:auto; /* même logique que l'historique */
+      overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:11px;touch-action:pan-y;
     }
     #validesPanel .table-wrap{
-      max-height:calc(60vh - 140px);
+      max-height:calc(100vh - 300px); /* même réserve que l'historique */
       overflow:auto;
       -webkit-overflow-scrolling:touch;
     }
@@ -1542,7 +1539,6 @@
         }
         cachedPlanning = list || [];
         renderPlanningGrid(cachedPlanning);
-        // after rendering, ensure the inner planning container gets focus for scroll
         const inner = document.querySelector('#planningPanel .planning-container');
         if(inner) inner.scrollTop = 0;
       }catch(err){
@@ -1612,10 +1608,8 @@
         </div>
       `;
 
-      // synchronize horizontal scrollbar (if needed) between header scrollbar and inner table
       const wrap = content.querySelector('.planning-container');
       if(wrap){
-        // create horizontal scrollbar element at top if not present
         let hsb = content.querySelector('.h-scrollbar');
         if(!hsb){
           hsb = document.createElement('div');
