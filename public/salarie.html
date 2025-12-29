@@ -254,7 +254,7 @@
       </div>
     </div>
 
-    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+    <div id="historyFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px.">
       <label style="font-size:12px;max-width:140px;">De
         <input type="date" id="histDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -316,7 +316,7 @@
   </div>
 
   <!-- Pointages validés -->
-  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(0,0,0,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;">
+  <div id="validesPanel" aria-hidden="true" style="position:fixed;left:0;right:0;bottom:100px;max-height:calc(100vh - 160px);background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:12px;touch-action:pan-y;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <strong style="font-size:16px;">Mes pointages validés</strong>
       <div style="display:flex;gap:6px;">
@@ -446,7 +446,7 @@
     async function apiPost(path, body){
       const r = await fetch(API_BASE + path,{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{"Content-Type":"application/json"},
         body: JSON.stringify(body||{})
       });
       if(!r.ok) throw new Error(r.statusText);
@@ -473,15 +473,16 @@
 
     window.onload = function(){
       const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || '';
-      if (!currentUser) {
-        try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      // --- Guard: si aucun user, on renvoie vers la page de connexion
-      if (!currentUser) {
+      const paramUser = params.get('u') || '';
+      let storedUser = '';
+      try { storedUser = localStorage.getItem('userLogin') || ''; } catch(e){ storedUser=''; }
+
+      // Sécurité : il faut un user en localStorage, et s'il y a un param u il doit matcher.
+      if (!storedUser || (paramUser && paramUser.toLowerCase() !== storedUser.toLowerCase())) {
         window.location.href = 'index.html';
         return;
       }
+      currentUser = storedUser; // on fait confiance uniquement au stockage local
 
       document.getElementById('userLabel').textContent = currentUser;
 
