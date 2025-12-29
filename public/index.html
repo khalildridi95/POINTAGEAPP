@@ -61,17 +61,23 @@
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
-    const TOKEN_KEY = "pcelec_token";
-    const LOGIN_KEY = "userLogin";
 
     let loadTimer=null, loadProgress=0;
 
     window.onload = function(){
       chargerIdentifiants();
+      const savedUser = localStorage.getItem('user');
+      const savedRole = localStorage.getItem('role');
+      const savedToken = localStorage.getItem('token');
+      if (savedUser && savedRole && savedToken) {
+        redir(savedRole);
+      }
     };
 
     async function fetchJSON(url, options){
-      const res = await fetch(url, { ...options });
+      const token = localStorage.getItem('token');
+      const headers = { ...(options?.headers||{}), ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+      const res = await fetch(url, { ...options, headers });
       if(!res.ok) throw new Error(res.status+" "+res.statusText);
       return res.json();
     }
@@ -124,26 +130,30 @@
       startLoading('Validation des accès...');
       if(btn) btn.disabled=true;
 
-      try{
+      try {
         const resp = await fetchJSON(API_BASE + "/login", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ login, password: pass })
         });
         stopLoading(true);
-        const token = resp.token;
-        const role  = (resp.user?.role || "user").toLowerCase();
-        const nom   = resp.user?.nom || login;
-
-        try { localStorage.setItem(TOKEN_KEY, token); localStorage.setItem(LOGIN_KEY, nom); } catch(e){}
-        if(role==='admin') window.location.href = "./admin.html";
-        else if(role==='compta') window.location.href = "./validation.html";
-        else window.location.href = "./salarie.html";
-      }catch(e){
+        localStorage.setItem('token', resp.token);
+        localStorage.setItem('user', resp.user.nom);
+        localStorage.setItem('role', resp.user.role || 'user');
+        localStorage.setItem('matricule', resp.user.matricule || '');
+        redir(resp.user.role || 'user');
+      } catch(e) {
         stopLoading(false);
         if(loginMsg){ loginMsg.textContent='Mot de passe incorrect ou erreur serveur'; loginMsg.style.display='block'; }
         if(btn) btn.disabled=false;
       }
+    }
+
+    function redir(role){
+      const r = (role||'user').toLowerCase();
+      if(r==='admin') window.location.href = "./admin.html";
+      else if(r==='compta') window.location.href = "./validation.html";
+      else window.location.href = "./salarie.html";
     }
   </script>
 </body>
