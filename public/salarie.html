@@ -31,58 +31,28 @@
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Panneaux modaux */
-    #historyPanel{
-      position:fixed; left:0; right:0;
-      top:80px; bottom:70px;
-      max-height:calc(100vh - 150px);
-      background:var(--card);
-      border-radius:16px;
-      padding:16px;
-      box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:hidden;
-      overscroll-behavior:none;
-      display:none; z-index:50;
-      padding-bottom:calc(12px + env(safe-area-inset-bottom));
-      font-size:11px;
-      touch-action:pan-y;
-      box-sizing:border-box;
-      display:flex; flex-direction:column; gap:10px;
-    }
-    #planningPanel{
-      position:fixed; left:0; right:0;
-      top:90px; bottom:70px;
-      max-height:calc(100vh - 160px);
-      background:var(--card);
-      border-radius:16px;
-      padding:16px;
-      box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:hidden;
-      overscroll-behavior:none;
-      display:none; z-index:50;
-      padding-bottom:calc(12px + env(safe-area-inset-bottom));
-      font-size:11px;
-      touch-action:pan-y;
-      box-sizing:border-box;
-      display:flex; flex-direction:column; gap:10px;
-    }
+    /* Panneaux modaux (fermés par défaut) */
+    #historyPanel,
+    #planningPanel,
     #validesPanel{
       position:fixed; left:0; right:0;
-      top:95px; bottom:70px;
-      max-height:calc(100vh - 165px);
-      background:#fff;
+      background:var(--card);
       border-radius:16px;
       padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none; z-index:50;
+      display:none; /* reste fermé par défaut */
+      z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
-      font-size:12px;
-      touch-action:pan-y;
       box-sizing:border-box;
-      display:flex; flex-direction:column; gap:10px;
+      display:flex; /* layout flex */
+      flex-direction:column;
+      gap:10px;
     }
+    #historyPanel{ top:80px; bottom:70px; max-height:calc(100vh - 150px); font-size:11px; touch-action:pan-y; }
+    #planningPanel{ top:90px; bottom:70px; max-height:calc(100vh - 160px); font-size:11px; touch-action:pan-y; }
+    #validesPanel{ top:95px; bottom:70px; max-height:calc(100vh - 165px); font-size:12px; touch-action:pan-y; }
 
     /* Scroll interne */
     .panel-body{
@@ -1326,7 +1296,7 @@
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('historyPanel');
-      panel.style.display='block';
+      panel.style.display='flex'; // important pour conserver la mise en page flex
       panel.setAttribute('aria-hidden','false');
       document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
       document.getElementById('fixedFooter').style.display = 'none';
@@ -1524,10 +1494,12 @@
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       setWeekPlanningDates();
       const panel=document.getElementById('planningPanel');
-      panel.style.display='block';
-      panel.setAttribute('aria-hidden','false');
-      document.getElementById('fixedFooter').style.display = 'none';
-      document.getElementById('planningContent').innerHTML='<div class="muted">Chargement...</div>';
+      if(panel){
+        panel.style.display='flex'; // flex pour le panneau
+        panel.setAttribute('aria-hidden','false');
+        document.getElementById('fixedFooter').style.display = 'none';
+        document.getElementById('planningContent').innerHTML='<div class="muted">Chargement...</div>';
+      }
       actualiserPlanning();
     }
 
