@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
 const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_ME_IN_PRODUCTION_12345ABCDE";
 
-// --- CORS ---
+// --- CORS (autorise front local + Render/GitHub Pages) ---
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -27,7 +27,7 @@ const allowedOrigins = [
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
 
-// Tables
+// Création des tables
 db.exec(`
 CREATE TABLE IF NOT EXISTS employes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS payes_validation (
 );
 `);
 
-// Seed
+// Seed minimal
 const rowCount = db.prepare("SELECT COUNT(*) AS n FROM employes").get().n;
 if (rowCount === 0) {
   db.prepare(`
@@ -102,7 +102,7 @@ if (rowCount === 0) {
   console.log("✅ Seed employes: demo/demo (admin)");
 }
 
-// Helpers
+// --- Helpers temps ---
 function hhmmToMinutes(s) {
   if (!s) return 0;
   const m = String(s).trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -125,7 +125,7 @@ function computeDurationMinutes(debut, fin, pause, reprise) {
   return Math.max(0, dur);
 }
 
-// Auth middleware
+// --- Middleware d'auth JWT ---
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -140,12 +140,14 @@ function authenticateToken(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     const r = String(req.user?.role || "user").toLowerCase();
-    if (!roles.includes(r)) return res.status(403).json({ error: "Accès refusé" });
+    if (!roles.map(x => x.toLowerCase()).includes(r)) {
+      return res.status(403).json({ error: "Accès refusé" });
+    }
     next();
   };
 }
 
-// App
+// --- App Express ---
 const app = express();
 app.use(cors({
   origin: allowedOrigins,
@@ -153,12 +155,12 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"))); // fichiers front
 
 // Santé
 app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
-// --- AUTH ---
+// ---------- AUTH ----------
 app.post("/api/login", (req, res) => {
   const { login, password } = req.body || {};
   if (!login || !password) return res.status(400).json({ error: "Login et mot de passe requis" });
@@ -173,13 +175,17 @@ app.post("/api/login", (req, res) => {
   res.json({ token, user: { nom: user.nom, role: user.role || "user", matricule: user.matricule || "" } });
 });
 
-app.get("/api/verify", authenticateToken, (req, res) => res.json({ valid: true, user: req.user }));
+app.get("/api/verify", authenticateToken, (req, res) => {
+  res.json({ valid: true, user: req.user });
+});
 
-// --- PUBLIC (compat) ---
+// ---------- ROUTES PUBLIQUES ----------
 app.get("/api/getIdentifiants", (_req, res) => {
   const list = db.prepare("SELECT DISTINCT nom FROM employes ORDER BY nom COLLATE NOCASE").all().map(r => r.nom);
   res.json(list);
 });
+
+// Compat anciens fronts
 app.post("/api/checkLogin", (req, res) => {
   const { login, password } = req.body || {};
   if (!login || !password) return res.json(false);
@@ -189,12 +195,11 @@ app.post("/api/checkLogin", (req, res) => {
 app.post("/api/getRoleForLogin", (req, res) => {
   const { login } = req.body || {};
   const row = db.prepare("SELECT role FROM employes WHERE lower(nom)=lower(?)").get(login || "");
-  const role = (row?.role || "user").toLowerCase();
+  const role = (row && row.role || "user").toLowerCase();
   res.json(role === "administrateur" ? "admin" : role);
 });
 
-// --- PROTÉGÉ ---
-// Employés
+// ---------- ROUTES PROTÉGÉES ----------
 app.get("/api/getEmployes", authenticateToken, requireRole("admin"), (_req, res) => {
   const rows = db.prepare("SELECT nom,email,password,role,matricule FROM employes ORDER BY nom COLLATE NOCASE").all();
   res.json(rows);
@@ -210,7 +215,6 @@ app.post("/api/saveEmployes", authenticateToken, requireRole("admin"), (req, res
   res.json({ ok: true, count: list.length });
 });
 
-// Campings / affaires
 app.get("/api/getCampingsEtAffaires", authenticateToken, (_req, res) => {
   const rows = db.prepare("SELECT camping, affaire FROM camp_aff ORDER BY camping COLLATE NOCASE, affaire COLLATE NOCASE").all();
   res.json(rows);
@@ -427,7 +431,7 @@ app.post("/api/getPlanningForUser", authenticateToken, (req, res) => {
   res.json(rows);
 });
 
-// Paye validée (user voit ses données, compta/admin tout)
+// Paye validée (user = ses données, compta/admin = toutes)
 app.post("/api/getPayeValidee", authenticateToken, (req, res) => {
   const { dateFrom, dateTo, salarie } = req.body || {};
   const forceUser = req.user.role === "user" ? req.user.nom : salarie;
@@ -456,7 +460,7 @@ app.post("/api/getPayeValidee", authenticateToken, (req, res) => {
   res.json(out);
 });
 
-// Historique edit/delete (admin/compta)
+// Edit/delete historique (admin/compta)
 app.post("/api/updateHistoriquePointage", authenticateToken, requireRole("admin", "compta"), (req, res) => {
   const { rowIndex, payload } = req.body || {};
   if (!rowIndex || !payload) return res.status(400).json({ ok: false, error: "rowIndex/payload manquant" });
@@ -534,7 +538,7 @@ app.post("/api/getRecapParSalarie", authenticateToken, requireRole("admin", "com
   res.json(Object.values(agg).sort((a, b) => a.salarie.localeCompare(b.salarie, "fr", { sensitivity: "base" })));
 });
 
-// Start
+// --- Start ---
 app.listen(PORT, () => {
   console.log(`🔒 API SQLite sécurisée sur port ${PORT}`);
 });
