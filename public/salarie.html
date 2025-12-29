@@ -52,8 +52,7 @@
       overflow:auto;
       -webkit-overflow-scrolling:touch;
     }
-
-    /* Planning */
+   /* Planning */
     #planningPanel{
       position:fixed; left:0; right:0; bottom:20px;
       max-height:calc(100vh - 180px); /* aligné sur historique */
@@ -61,7 +60,7 @@
       border-radius:16px;
       padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:hidden; /* même logique que l'historique */
+      overflow:auto; /* même logique que l'historique */
       overscroll-behavior:none;
       display:none; z-index:50;
       padding-bottom:calc(22px + env(safe-area-inset-bottom));
@@ -70,16 +69,9 @@
     }
     /* le conteneur planning défile maintenant (scroll interne) */
   #planningPanel .planning-container{
-    max-height:calc(100vh - 300px); /* même réserve que l’historique */
-    min-height:120px;
-    overflow:auto;                  /* scroll interne */
-    -webkit-overflow-scrolling:touch;
-    margin:0;
-    margin-bottom:48px;
-    padding-bottom:0;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    box-sizing:border-box;
+  max-height:calc(100vh - 300px);
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
   }
 
     .h-scrollbar{
