@@ -174,7 +174,7 @@
     <div class="card">
       <div class="card-body">
         <h2>Récap par salarié (agrégé)</h2>
-        <div class="flex" style="margin-bottom:12px;">
+        <div class="flex" style="margin-bottom:12px.">
           <label>Du <input type="date" id="rsFrom"></label>
           <label>Au <input type="date" id="rsTo"></label>
           <label>Salarié
@@ -199,7 +199,7 @@
     <div class="card">
       <div class="card-body">
         <h2>Historique (modifier / exporter)</h2>
-        <div class="flex" style="margin-bottom:10px;">
+        <div class="flex" style="margin-bottom:10px.">
           <label>De <input type="date" id="hFrom"></label>
           <label>À <input type="date" id="hTo"></label>
           <label>Salarié
@@ -216,7 +216,7 @@
           <button class="btn-secondary" onclick="resetHistoryFilters()">Réinitialiser</button>
           <button class="btn-secondary" onclick="telechargerPDFHistorique()">Exporter PDF</button>
         </div>
-        <div id="histStatus" class="muted" style="margin-bottom:8px;">Choisissez une plage puis Appliquer.</div>
+        <div id="histStatus" class="muted" style="margin-bottom:8px.">Choisissez une plage puis Appliquer.</div>
         <div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>
         <div class="history-table-wrap">
           <table class="history-table" id="histTable">
@@ -229,6 +229,25 @@
   </div> <!-- fin #app-root -->
 
   <script>
+    // --- Auth helpers ---
+    function getStoredToken(){ try { return localStorage.getItem('authToken') || ''; } catch(e){ return ''; } }
+    function parseJwt(token){
+      try { return JSON.parse(atob(token.split('.')[1] || '')); } catch(e){ return null; }
+    }
+    async function ensureAccess(rolesAllowed=['compta','admin']){
+      const token = getStoredToken();
+      const payload = token ? parseJwt(token) : null;
+      const role = (payload && payload.role || '').toLowerCase();
+      const login = (payload && payload.login) || '';
+      if(!token || !payload || !rolesAllowed.includes(role)){
+        logout(true);
+        return false;
+      }
+      currentUser = login;
+      try { localStorage.setItem('userLogin', login); } catch(e){}
+      return true;
+    }
+
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
     const API_BASE = USE_LOCAL
@@ -236,28 +255,19 @@
           ? "http://localhost:3000/api"
           : "https://pointage-oeax.onrender.com/api")
       : '';
-
-    // --- Sécurité : vérification de session côté API locale
-    async function ensureSession() {
-      if (!USE_LOCAL) return { ok: true }; // en mode Apps Script, pas de cookie backend
-      const res = await fetch(API_BASE + "/checkSession", { credentials: "include" });
-      if (!res.ok) { window.location.href = "index.html"; return null; }
-      return res.json();
-    }
-
-    // Wrappers fetch avec credentials quand USE_LOCAL
     async function apiGet(path){
-      const r = await fetch(API_BASE+path, USE_LOCAL ? { credentials:"include" } : undefined);
+      const headers = {};
+      const token = getStoredToken();
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const r=await fetch(API_BASE+path,{headers});
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
     }
     async function apiPost(path, body){
-      const r = await fetch(API_BASE+path,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials: USE_LOCAL ? "include" : "same-origin",
-        body:JSON.stringify(body||{})
-      });
+      const headers = {'Content-Type':'application/json'};
+      const token = getStoredToken();
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const r=await fetch(API_BASE+path,{method:'POST',headers,body:JSON.stringify(body||{})});
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
     }
@@ -270,15 +280,7 @@
     let currentUser='', employees=[], recapCache=[], recapSalCache=[], recapSalRaw=[], campAff=[], cachedHistory=null;
     let historyHeaderIndices={ date:-1, nom:-1, camping:-1 };
 
-    function logout(){
-      if (USE_LOCAL) {
-        fetch(API_BASE + "/logout", { method:"POST", credentials:"include" })
-          .finally(()=>{ try{localStorage.removeItem('userLogin');}catch(e){} window.location.href='index.html'; });
-      } else {
-        try{localStorage.removeItem('userLogin');}catch(e){}
-        window.location.href='index.html';
-      }
-    }
+    function logout(force){ try{localStorage.removeItem('userLogin'); localStorage.removeItem('authToken');}catch(e){} window.location.href='index.html'; if(force) return; }
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60),mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
     function hhmmToMin(v){ if(!v) return 0; const m=String(v).trim().match(/^(\d{1,2}):(\d{2})$/); if(!m) return 0; return parseInt(m[1],10)*60+parseInt(m[2],10); }
     function fmtDateLocal(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -290,11 +292,15 @@
     function nowMeta(){ const d=new Date(); return { iso: fmtDateLocal(d), hm: d.toTimeString().slice(0,5) }; }
 
     window.onload=async()=>{
-      const session = await ensureSession(); if(!session) return;
+      const ok = await ensureAccess(['compta','admin']);
+      if(!ok) return;
+
       const t=fmtDateLocal(new Date());
       ['fFrom','fTo','rFrom','rTo','rsFrom','rsTo','hFrom','hTo'].forEach(id=>{const el=document.getElementById(id); if(el) el.value=t;});
       const params=new URLSearchParams(window.location.search);
-      currentUser=params.get('u')||''; try{ if(!currentUser) currentUser=localStorage.getItem('userLogin')||''; }catch(e){}
+      const qUser=params.get('u');
+      if (qUser && qUser !== currentUser) currentUser = qUser;
+      if(!currentUser){ try{ currentUser=localStorage.getItem('userLogin')||''; }catch(e){} }
       Promise.all([populateEmployees(), loadCampAff()]).then(()=>{ loadAValider(); loadRecap(); loadRecapSal(); applyHistoryFilters(); });
     };
 
