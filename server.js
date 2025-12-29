@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 // --- CONFIG ---
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
-const JWT_SECRET = process.env.JWT_SECRET || 24d06f19a839638d203ae0fbb3e7ce27;
+const JWT_SECRET = process.env.JWT_SECRET || "24d06f19a839638d203ae0fbb3e7ce27";
 
 // --- CORS (autorise front local + Render/GitHub Pages) ---
 const allowedOrigins = [
