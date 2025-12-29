@@ -59,14 +59,11 @@
   </div>
 
   <script>
-    const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
-
     let loadTimer=null, loadProgress=0;
 
-    window.onload = function(){
-      chargerIdentifiants();
-    };
+    window.onload = function(){ chargerIdentifiants(); };
 
     async function fetchJSON(url, options){
       const res = await fetch(url, { ...options });
@@ -129,14 +126,14 @@
           body: JSON.stringify({ login, password: pass })
         });
         stopLoading(true);
-        // Stocke token et info user
-        localStorage.setItem("authToken", resp.token);
-        localStorage.setItem("userLogin", resp.user.nom);
-        localStorage.setItem("userRole", resp.user.role || "user");
-        // Redirige selon rôle
-        const role = (resp.user.role || "user").toLowerCase();
-        if(role === "admin") window.location.href = "./admin.html";
-        else if(role === "compta") window.location.href = "./validation.html";
+        // stocke token + user
+        localStorage.setItem('authToken', resp.token);
+        localStorage.setItem('userLogin', resp.user?.nom || login);
+        localStorage.setItem('userRole', (resp.user?.role || 'user').toLowerCase());
+
+        const role = (resp.user?.role || "user").toLowerCase();
+        if(role==='admin') window.location.href = "./admin.html";
+        else if(role==='compta') window.location.href = "./validation.html";
         else window.location.href = "./salarie.html";
       }catch(e){
         stopLoading(false);
