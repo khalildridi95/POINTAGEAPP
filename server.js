@@ -19,6 +19,18 @@ const DB_FILE = process.env.DB_FILE || "./data.sqlite";
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-please";
 const JWT_EXPIRES_IN = "12h";
 const IS_PROD = process.env.NODE_ENV === "production";
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: "none",   // important pour cross-site
+  secure: true,       // obligatoire avec SameSite=None
+  maxAge: 12 * 60 * 60 * 1000
+};
+
+// Login
+res.cookie("auth_token", token, COOKIE_OPTIONS);
+
+// Logout
+res.clearCookie("auth_token", COOKIE_OPTIONS);
 
 // --- CORS ---
 const allowedOrigins = [
