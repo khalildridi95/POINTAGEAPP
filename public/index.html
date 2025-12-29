@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>PCELEC</title>
+  <title>PCELEC - Connexion</title>
   <style>
     :root{--primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;}
     html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#111;}
@@ -59,7 +59,7 @@
   </div>
 
   <script>
-    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const IS_LOCAL = location.hostname === "localhost" || location.hostname === "127.0.0.1";
     const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
 
     let loadTimer=null, loadProgress=0;
@@ -69,7 +69,7 @@
     };
 
     async function fetchJSON(url, options){
-      const res = await fetch(url, { credentials: "include", ...options });
+      const res = await fetch(url, { ...options });
       if(!res.ok) throw new Error(res.status+" "+res.statusText);
       return res.json();
     }
@@ -129,10 +129,14 @@
           body: JSON.stringify({ login, password: pass })
         });
         stopLoading(true);
-        try{ localStorage.setItem('userLogin', resp.nom); }catch(e){}
-        const role = (resp.role || "user").toLowerCase();
-        if(role==='admin') window.location.href = "./admin.html";
-        else if(role==='compta') window.location.href = "./validation.html";
+        // Stocke token et info user
+        localStorage.setItem("authToken", resp.token);
+        localStorage.setItem("userLogin", resp.user.nom);
+        localStorage.setItem("userRole", resp.user.role || "user");
+        // Redirige selon rôle
+        const role = (resp.user.role || "user").toLowerCase();
+        if(role === "admin") window.location.href = "./admin.html";
+        else if(role === "compta") window.location.href = "./validation.html";
         else window.location.href = "./salarie.html";
       }catch(e){
         stopLoading(false);
