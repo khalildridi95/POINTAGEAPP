@@ -31,13 +31,13 @@
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Fenêtres fixes */
+    /* Fenêtres fixes (affichées seulement quand on enlève display:none) */
     #historyPanel,
     #planningPanel,
     #validesPanel{
       position:fixed; left:0; right:0;
-      top:40px; bottom:70px;
-      max-height:calc(100vh - 110px);
+      top:50px; bottom:70px;
+      max-height:calc(100vh - 120px);
       background:var(--card);
       border-radius:16px;
       padding:16px;
@@ -46,14 +46,14 @@
       font-size:11px;
       touch-action:pan-y;
       box-sizing:border-box;
-      overflow:hidden;           /* panneau fixe */
+      overflow:hidden;
       display:flex;
       flex-direction:column;
       gap:10px;
     }
-    /* Ajuste un peu pour planning et valides (bas déjà plus haut) */
-    #planningPanel{ top:50px; bottom:80px; }
-    #validesPanel{ top:60px; bottom:90px; }
+    /* ajustements fins */
+    #planningPanel{ top:56px; bottom:78px; }
+    #validesPanel{ top:62px; bottom:86px; }
 
     /* Scroll interne */
     .panel-body-scroll{
@@ -251,7 +251,7 @@
   </div>
 
   <!-- Historique -->
-  <div id="historyPanel" aria-hidden="true">
+  <div id="historyPanel" aria-hidden="true" style="display:none;">
     <div id="historyHeader" style="display:flex;justify-content:space-between;align-items:center;">
       <strong id="historyTitle" style="font-size:16px;">Historique</strong>
       <div style="display:flex;gap:6px;">
@@ -291,7 +291,7 @@
   </div>
 
   <!-- Planning -->
-  <div id="planningPanel" aria-hidden="true">
+  <div id="planningPanel" aria-hidden="true" style="display:none;">
     <div id="planningHeader" style="display:flex;justify-content:space-between;align-items:center;">
       <strong id="planningTitle" style="font-size:16px;">Planning de l'équipe</strong>
       <div style="display:flex;gap:6px;">
@@ -322,7 +322,7 @@
   </div>
 
   <!-- Pointages validés -->
-  <div id="validesPanel" aria-hidden="true">
+  <div id="validesPanel" aria-hidden="true" style="display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
       <strong style="font-size:16px;">Mes pointages validés</strong>
       <div style="display:flex;gap:6px;">
@@ -502,9 +502,10 @@
       setWeekPlanningDates();
       setDefaultValidesDates();
       setDefaultHistoryToday();
-      applyHistoryFilters();    // historique du jour
+      // On charge les données mais on n'ouvre aucune fenêtre
+      applyHistoryFilters();    // charge les données (panel reste fermé)
       chargerTachesAujourdHui();
-      actualiserPlanning();     // semaine courante
+      actualiserPlanning();     // charge les données (panel reste fermé)
     };
 
     function loadLogoFromCode() {
@@ -1292,7 +1293,7 @@
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('historyPanel');
-      panel.style.display='block';
+      panel.style.display='flex';
       panel.setAttribute('aria-hidden','false');
       document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
       document.getElementById('fixedFooter').style.display = 'none';
@@ -1401,7 +1402,7 @@
         if(idxDate>=0 && (dateFrom || dateTo)){
           const cd = parseCellDate(r[idxDate]); if(!cd) return false;
           if(dateFrom && cd < dateFrom) ok = false;
-          if(dateTo && cd > dateTo) ok = false;
+          ifdateTo && cd > dateTo) ok = false;
         }
         if(idxNom>=0 && sal){ if((r[idxNom]||'').toString().trim().toLowerCase() !== sal.toLowerCase()) ok = false; }
         if(idxCamp>=0 && camp){ if((r[idxCamp]||'').toString().trim().toLowerCase() !== camp.toLowerCase()) ok = false; }
@@ -1502,7 +1503,7 @@
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       setWeekPlanningDates();
       const panel=document.getElementById('planningPanel');
-      panel.style.display='block';
+      panel.style.display='flex';
       panel.setAttribute('aria-hidden','false');
       document.getElementById('fixedFooter').style.display = 'none';
       document.getElementById('planningContent').innerHTML='<div class="muted">Chargement...</div>';
