@@ -471,17 +471,21 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    window.onload = function(){
+    function requireUserLogin(){
       const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || '';
-      if (!currentUser) {
-        try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      if (!currentUser) {
-        document.getElementById('userLabel').textContent = '';
-        showError('global', 'Utilisateur non identifié (paramètre manquant).');
-        return;
-      }
+      const urlUser = (params.get('u') || '').trim();
+      let stored = '';
+      try { stored = (localStorage.getItem('userLogin') || '').trim(); } catch(e){}
+      const user = urlUser || stored;
+      if (!user) { window.location.href = 'index.html'; return null; }
+      try { localStorage.setItem('userLogin', user); } catch(e){}
+      return user;
+    }
+
+    window.onload = function(){
+      const user = requireUserLogin();
+      if (!user) return; // redirection en cours
+      currentUser = user;
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
