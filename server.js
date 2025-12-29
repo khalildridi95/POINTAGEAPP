@@ -10,6 +10,10 @@ import bodyParser from "body-parser";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
+// Si tu veux hasher les mots de passe, dé-commente :
+// import bcrypt from "bcryptjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +21,8 @@ const __dirname = path.dirname(__filename);
 // --- CONFIG ---
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
+const JWT_SECRET = process.env.JWT_SECRET || "change-me-please";
+const JWT_EXPIRES_IN = "12h";
 
 // --- CORS ---
 const allowedOrigins = [
@@ -130,10 +136,12 @@ function computeDurationMinutes(debut, fin, pause, reprise) {
 
 // --- Express app ---
 const app = express();
+app.use(cookieParser());
 app.use(cors({
   origin: allowedOrigins,
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
 }));
 app.use(bodyParser.json());
 
@@ -143,6 +151,62 @@ app.use(express.static(path.join(__dirname, "public")));
 // Santé
 app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
+// ----------- AUTH JWT -----------
+const publicPaths = new Set([
+  "/api/ping",
+  "/api/login",
+  "/api/getIdentifiants" // garde publique pour pré-remplir la liste des logins
+]);
+
+function requireAuth(req, res, next) {
+  const cookieToken = req.cookies?.auth_token;
+  const headerToken = (req.headers.authorization || "").startsWith("Bearer ")
+    ? req.headers.authorization.slice(7)
+    : null;
+  const token = cookieToken || headerToken;
+  if (!token) return res.status(401).json({ error: "unauthorized" });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    return next();
+  } catch (e) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+}
+
+// Garde globale sur les routes /api (appliquée avant les handlers ci-dessous)
+app.use("/api", (req, res, next) => {
+  if (publicPaths.has(req.path)) return next();
+  return requireAuth(req, res, next);
+});
+
+// Login : vérifie login/password, signe un JWT, le met en cookie HttpOnly
+app.post("/api/login", (req, res) => {
+  const { login, password } = req.body || {};
+  if (!login || !password) return res.status(400).json({ error: "missing credentials" });
+  const row = db.prepare("SELECT nom, password, role, matricule FROM employes WHERE lower(nom)=lower(?)").get(login);
+  if (!row) return res.status(401).json({ error: "invalid credentials" });
+
+  // Si tu hashes : if (!bcrypt.compareSync(password, row.password)) return res.status(401)...
+  if (row.password !== password) return res.status(401).json({ error: "invalid credentials" });
+
+  const payload = { login: row.nom, role: (row.role || "user").toLowerCase(), matricule: row.matricule || "" };
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  res.cookie("auth_token", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 12 * 60 * 60 * 1000,
+  });
+  res.json({ ok: true, role: payload.role });
+});
+
+// Logout : efface le cookie
+app.post("/api/logout", (_req, res) => {
+  res.clearCookie("auth_token");
+  res.json({ ok: true });
+});
+
 // ----------- AUTH / LISTES -----------
 app.get("/api/getIdentifiants", (req, res) => {
   const list = db.prepare("SELECT DISTINCT nom FROM employes ORDER BY nom COLLATE NOCASE").all().map(r => r.nom);
@@ -150,6 +214,7 @@ app.get("/api/getIdentifiants", (req, res) => {
 });
 
 app.post("/api/checkLogin", (req, res) => {
+  // obsolète si tu passes par /api/login ; gardé pour compat si besoin
   const { login, password } = req.body || {};
   if (!login || !password) return res.json(false);
   const row = db.prepare("SELECT password FROM employes WHERE lower(nom)=lower(?)").get(login);
@@ -173,12 +238,16 @@ app.post("/api/saveEmployes", (req, res) => {
   const tx = db.transaction(() => {
     db.prepare("DELETE FROM employes").run();
     const ins = db.prepare("INSERT INTO employes (nom,email,password,role,matricule) VALUES (?,?,?,?,?)");
-    list.forEach(e => ins.run(e.nom || "", e.email || "", e.password || "", e.role || "user", e.matricule || ""));
+    list.forEach(e => {
+      // Si hashage activé : const hashed = bcrypt.hashSync(e.password || "", 10);
+      ins.run(e.nom || "", e.email || "", e.password || "", e.role || "user", e.matricule || "");
+    });
   });
   tx();
   res.json({ ok: true, count: list.length });
 });
 
+// ... (toutes les routes existantes restent inchangées)
 app.get("/api/getCampingsEtAffaires", (req, res) => {
   const rows = db.prepare("SELECT camping, affaire FROM camp_aff ORDER BY camping COLLATE NOCASE, affaire COLLATE NOCASE").all();
   res.json(rows);
@@ -271,8 +340,7 @@ app.post("/api/getInitialData", (req, res) => {
   res.json({ campAff, employes, planning });
 });
 
-// Import Excel camp/aff (déjà là, on garde)
-// Remplace le handler /api/importCampAffLocal par ceci
+// Import Excel camp/aff
 app.post("/api/importCampAffLocal", (req, res) => {
   const { b64, filename } = req.body || {};
   if (!b64) return res.status(400).json({ ok:false, error:"contenu vide" });
@@ -283,12 +351,9 @@ app.post("/api/importCampAffLocal", (req, res) => {
     const rows = xlsx.utils.sheet_to_json(ws, { header: 1 });
 
     const out = [];
-    // Ligne 1 = entête ; données à partir de la ligne 2
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i] || [];
-      // Camping = colonne F (index 5)
       const camping = (r[5] || "").toString().trim();
-      // Affaire = colonne A & ":" & colonne C (index 0 et 2)
       const a = (r[0] || "").toString().trim();
       const c = (r[2] || "").toString().trim();
       const affaire = (a || c) ? `${a}:${c}`.replace(/^:|:$/g, "") : "";
@@ -392,14 +457,14 @@ app.post("/api/getHistoriquePointagesFiltered", (req, res) => {
       out.push([
         r.date, r.type_personne, r.nom, r.nature, r.camping, r.affaire, r.commentaire,
         r.debut, r.pause, r.reprise, r.fin, r.travail_hhmm, r.depl_hhmm, r.matricule,
-        i + 2 // index 1-based, entête = 1
+        i + 2
       ]);
     }
   });
   res.json(out);
 });
 
-// Historique brut (non filtré) si besoin
+// Historique brut (non filtré)
 app.get("/api/getHistoriquePointages", (_req, res) => {
   const rows = db.prepare("SELECT * FROM pointages ORDER BY id").all();
   const out = [];
