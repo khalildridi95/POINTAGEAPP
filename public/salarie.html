@@ -169,28 +169,28 @@
       width:auto;
     }
 
-    /* Pointages validés - adjusted: move window up and add extra bottom space; scrolling inside table */
+    /* Pointages validés - modified so the panel stays fixed and the inner table scrolls */
     #validesPanel{
       position:fixed;
       left:0;
       right:0;
-      bottom:120px;               /* déplacé vers le haut (plus haut que before) */
-      max-height:calc(100vh - 240px); /* hauteur limitée pour qu'il reste visible */
+      bottom:20px; /* rapproché du bas */
+      max-height:60vh; /* panneau plus petit */
       background:#fff;
       border-radius:16px;
       padding:16px;
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      overflow:hidden;            /* empêcher le panneau de défiler lui-même */
+      overflow:hidden; /* empêcher le panneau de défiler */
       overscroll-behavior:none;
       display:none;
       z-index:50;
-      padding-bottom:calc(36px + env(safe-area-inset-bottom)); /* plus d'espace en bas à l'intérieur du panneau */
+      padding-bottom:calc(22px + env(safe-area-inset-bottom));
       font-size:12px;
       touch-action:pan-y;
     }
-    /* Le tableau interne défilera verticalement et tient compte de l'espace ajouté en bas */
+    /* Le tableau interne dans "valides" défilera verticalement */
     #validesPanel .table-wrap{
-      max-height:calc(100vh - 360px); /* leave room for header/filters and the extra bottom space */
+      max-height:calc(60vh - 140px); /* laisse la place pour les filtres/header */
       overflow:auto;
       -webkit-overflow-scrolling:touch;
     }
