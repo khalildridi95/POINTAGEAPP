@@ -295,9 +295,20 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
+function getToken() {
+  try { return localStorage.getItem("auth_token") || ""; } catch { return ""; }
+}
+
 async function fetchJSON(url, options) {
-  const res = await fetch(url, { credentials: "include", ...(options||{}) });
-  if (res.status === 401) { window.location.href = "index.html"; throw new Error("unauthorized"); }
+  const token = getToken();
+  const headers = { "Content-Type": "application/json", ...(options?.headers || {}) };
+  if (token) headers.Authorization = "Bearer " + token;
+  const res = await fetch(url, { ...(options||{}), headers });
+  if (res.status === 401) {
+    localStorage.removeItem("auth_token");
+    window.location.href = "index.html";
+    throw new Error("unauthorized");
+  }
   if (!res.ok) throw new Error(res.status + " " + res.statusText);
   return res.json();
 }
