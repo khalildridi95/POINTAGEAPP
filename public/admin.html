@@ -287,6 +287,7 @@
     function fmtDateDisplay(isoStr){ if(!isoStr) return ''; const p=isoStr.split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr; }
     function fmtHHMM(v){ if(v==null) return ''; const s=String(v).trim(); const m=s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/); if(m) return `${m[1].padStart(2,'0')}:${m[2]}`; return s; }
     function startOfWeek(d){ const c=new Date(d); const day=c.getDay(); const diff=(day===0?-6:1-day); c.setDate(c.getDate()+diff); c.setHours(0,0,0,0); return c; }
+    function endOfWeek(d){ const c=new Date(d); const day=c.getDay(); const diff=(day===0?0:7-day); c.setDate(c.getDate()+diff); c.setHours(0,0,0,0); return c; }
     function addDays(d,n){ const c=new Date(d); c.setDate(c.getDate()+n); c.setHours(0,0,0,0); return c; }
     function addMonths(d,n){ const c=new Date(d); c.setMonth(c.getMonth()+n); c.setDate(1); c.setHours(0,0,0,0); return c; }
     function hhmmToMinutes(hhmm){ if(!hhmm) return 0; const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})/); if(!m) return 0; return parseInt(m[1],10)*60 + parseInt(m[2],10); }
@@ -1077,6 +1078,10 @@
     }
     async function loadScriptOnce(src,label){
       return new Promise((resolve,reject)=>{
+        // Already loaded via globals?
+        if (label === 'jspdf' && window.jspdf && window.jspdf.jsPDF) { resolve(); return; }
+        if (label === 'autoTable' && window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) { resolve(); return; }
+
         const existing = document.querySelector(`script[data-src="${src}"]`);
         const alreadyLoaded = () => {
           if (label === 'jspdf' && window.jspdf && window.jspdf.jsPDF) return true;
@@ -1115,9 +1120,11 @@
       if (btn) btn.disabled = true;
       if (status) status.textContent = "Génération en cours...";
 
+      const finish = () => { if (btn) btn.disabled = false; if (status) status.textContent = ""; };
+
       try {
         const data = filterCachedHistory();
-        if (!data || data.length <= 1) throw new Error("Aucune donnée à exporter. Clique Appliquer d'abord.");
+        if (!data || data.length <= 1) { alert("Aucune donnée à exporter. Clique Appliquer d'abord."); finish(); return; }
 
         const header = data[0];
         const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
@@ -1161,8 +1168,7 @@
       } catch(e) {
         alert(e && e.message ? e.message : e);
       } finally {
-        if (btn) btn.disabled = false;
-        if (status) status.textContent = "";
+        finish();
       }
     }
 
@@ -1242,22 +1248,21 @@
       try {
         await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','jspdf');
         await loadScriptOnce('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js','autoTable');
+
         const {start, end, label} = getRange();
+        const exportStart = startOfWeek(start);
+        const exportEnd = endOfWeek(end);
         const days = [];
-        let d = new Date(start);
-        while(d <= end){ days.push(new Date(d)); d = addDays(d,1); }
+        let d = new Date(exportStart);
+        while(d <= exportEnd){ days.push(new Date(d)); d = addDays(d,1); }
 
         const weeks = [];
-        let cursor = 0;
-        while(cursor < days.length){
-          const ws = startOfWeek(days[cursor]);
-          const we = addDays(ws, 6);
-          const slice = days.filter(x => x >= ws && x <= we);
+        for(let cursor=0; cursor<days.length; cursor+=7){
+          const slice = days.slice(cursor, cursor+7);
           weeks.push({
             label: fmtDateDisplay(fmtDateLocal(slice[0])) + " → " + fmtDateDisplay(fmtDateLocal(slice[slice.length-1])),
             days: slice
           });
-          cursor += slice.length;
         }
 
         const { jsPDF } = window.jspdf;
