@@ -31,7 +31,7 @@
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
     .footer-right{color:var(--muted);font-size:13px;}
 
-    /* Fenêtres fixes et basses */
+    /* Fenêtres fixes et basses (fermées par défaut) */
     #historyPanel{
       position:fixed; left:0; right:0;
       top:80px; bottom:70px;
@@ -42,12 +42,12 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none; z-index:50;
+      display:none;
+      z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
       box-sizing:border-box;
-      display:flex;
       flex-direction:column;
       gap:10px;
     }
@@ -61,12 +61,12 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none; z-index:50;
+      display:none;
+      z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
       font-size:11px;
       touch-action:pan-y;
       box-sizing:border-box;
-      display:flex;
       flex-direction:column;
       gap:10px;
     }
@@ -80,12 +80,12 @@
       box-shadow:0 24px 90px rgba(2,6,23,0.2);
       overflow:hidden;
       overscroll-behavior:none;
-      display:none; z-index:50;
+      display:none;
+      z-index:50;
       padding-bottom:calc(12px + env(safe-area-inset-bottom));
       font-size:12px;
       touch-action:pan-y;
       box-sizing:border-box;
-      display:flex;
       flex-direction:column;
       gap:10px;
     }
@@ -336,7 +336,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px.">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
