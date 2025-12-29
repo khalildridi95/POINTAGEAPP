@@ -336,7 +336,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px.">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:8px;">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -857,7 +857,7 @@
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('validesPanel');
       if(panel){
-        panel.style.display='block';
+        panel.style.display='flex'; /* important pour flex child */
         panel.setAttribute('aria-hidden','false');
         document.getElementById('fixedFooter').style.display = 'none';
       }
@@ -1332,7 +1332,7 @@
       const meta = document.querySelector('meta[name="viewport"]');
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('historyPanel');
-      panel.style.display='block';
+      panel.style.display='flex'; /* important pour flex child */
       panel.setAttribute('aria-hidden','false');
       document.getElementById('historyContent').innerHTML='<div class="muted">Chargement...</div>';
       document.getElementById('fixedFooter').style.display = 'none';
@@ -1441,7 +1441,7 @@
         if(idxDate>=0 && (dateFrom || dateTo)){
           const cd = parseCellDate(r[idxDate]); if(!cd) return false;
           if(dateFrom && cd < dateFrom) ok = false;
-          if(dateTo && cd > dateTo) ok = false;
+          ifdateTo && cd > dateTo) ok = false;
         }
         if(idxNom>=0 && sal){ if((r[idxNom]||'').toString().trim().toLowerCase() !== sal.toLowerCase()) ok = false; }
         if(idxCamp>=0 && camp){ if((r[idxCamp]||'').toString().trim().toLowerCase() !== camp.toLowerCase()) ok = false; }
@@ -1530,7 +1530,7 @@
       if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1, user-scalable=yes');
       setWeekPlanningDates();
       const panel=document.getElementById('planningPanel');
-      panel.style.display='block';
+      panel.style.display='flex'; /* important pour flex child */
       panel.setAttribute('aria-hidden','false');
       document.getElementById('fixedFooter').style.display = 'none';
       document.getElementById('planningContent').innerHTML='<div class="muted">Chargement...</div>';
