@@ -298,7 +298,7 @@
 function getToken() {
   try { return localStorage.getItem("auth_token") || ""; } catch { return ""; }
 }
-
+  if (!getToken()) { window.location.href = "index.html"; }
 async function fetchJSON(url, options) {
   const token = getToken();
   const headers = { "Content-Type": "application/json", ...(options?.headers || {}) };
