@@ -13,9 +13,9 @@ const __dirname = path.dirname(__filename);
 // --- CONFIG ---
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
-const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_ME_IN_PRODUCTION_12345ABCDE"; // ⚠️ change en prod
+const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_ME_IN_PRODUCTION_12345ABCDE";
 
-// --- CORS (autorise front local + Render + GitHub Pages) ---
+// --- CORS ---
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -140,9 +140,7 @@ function authenticateToken(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     const r = String(req.user?.role || "user").toLowerCase();
-    if (!roles.map(x => x.toLowerCase()).includes(r)) {
-      return res.status(403).json({ error: "Accès refusé" });
-    }
+    if (!roles.includes(r)) return res.status(403).json({ error: "Accès refusé" });
     next();
   };
 }
@@ -157,9 +155,10 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, "public")));
 
+// Santé
 app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
-// ---------- AUTH ----------
+// --- AUTH ---
 app.post("/api/login", (req, res) => {
   const { login, password } = req.body || {};
   if (!login || !password) return res.status(400).json({ error: "Login et mot de passe requis" });
@@ -174,11 +173,9 @@ app.post("/api/login", (req, res) => {
   res.json({ token, user: { nom: user.nom, role: user.role || "user", matricule: user.matricule || "" } });
 });
 
-app.get("/api/verify", authenticateToken, (req, res) => {
-  res.json({ valid: true, user: req.user });
-});
+app.get("/api/verify", authenticateToken, (req, res) => res.json({ valid: true, user: req.user }));
 
-// ---------- PUBLIC (compat) ----------
+// --- PUBLIC (compat) ---
 app.get("/api/getIdentifiants", (_req, res) => {
   const list = db.prepare("SELECT DISTINCT nom FROM employes ORDER BY nom COLLATE NOCASE").all().map(r => r.nom);
   res.json(list);
@@ -192,11 +189,12 @@ app.post("/api/checkLogin", (req, res) => {
 app.post("/api/getRoleForLogin", (req, res) => {
   const { login } = req.body || {};
   const row = db.prepare("SELECT role FROM employes WHERE lower(nom)=lower(?)").get(login || "");
-  const role = (row && row.role || "user").toLowerCase();
+  const role = (row?.role || "user").toLowerCase();
   res.json(role === "administrateur" ? "admin" : role);
 });
 
-// ---------- PROTECTED ----------
+// --- PROTÉGÉ ---
+// Employés
 app.get("/api/getEmployes", authenticateToken, requireRole("admin"), (_req, res) => {
   const rows = db.prepare("SELECT nom,email,password,role,matricule FROM employes ORDER BY nom COLLATE NOCASE").all();
   res.json(rows);
@@ -212,6 +210,7 @@ app.post("/api/saveEmployes", authenticateToken, requireRole("admin"), (req, res
   res.json({ ok: true, count: list.length });
 });
 
+// Campings / affaires
 app.get("/api/getCampingsEtAffaires", authenticateToken, (_req, res) => {
   const rows = db.prepare("SELECT camping, affaire FROM camp_aff ORDER BY camping COLLATE NOCASE, affaire COLLATE NOCASE").all();
   res.json(rows);
@@ -428,15 +427,15 @@ app.post("/api/getPlanningForUser", authenticateToken, (req, res) => {
   res.json(rows);
 });
 
-// Paye validée (user voit ses données)
+// Paye validée (user voit ses données, compta/admin tout)
 app.post("/api/getPayeValidee", authenticateToken, (req, res) => {
   const { dateFrom, dateTo, salarie } = req.body || {};
-  const filterSalarie = req.user.role === "user" ? req.user.nom : salarie;
+  const forceUser = req.user.role === "user" ? req.user.nom : salarie;
   const rows = db.prepare("SELECT * FROM payes_validation ORDER BY date, salarie COLLATE NOCASE").all();
   const out = rows.filter(r =>
     (!dateFrom || r.date >= dateFrom) &&
     (!dateTo || r.date <= dateTo) &&
-    (!filterSalarie || (r.salarie || "").toLowerCase() === filterSalarie.toLowerCase())
+    (!forceUser || (r.salarie || "").toLowerCase() === forceUser.toLowerCase())
   ).map(r => ({
     date: r.date,
     salarie: r.salarie,
@@ -457,7 +456,7 @@ app.post("/api/getPayeValidee", authenticateToken, (req, res) => {
   res.json(out);
 });
 
-// Edit/delete historique (admin/compta)
+// Historique edit/delete (admin/compta)
 app.post("/api/updateHistoriquePointage", authenticateToken, requireRole("admin", "compta"), (req, res) => {
   const { rowIndex, payload } = req.body || {};
   if (!rowIndex || !payload) return res.status(400).json({ ok: false, error: "rowIndex/payload manquant" });
@@ -527,13 +526,15 @@ app.post("/api/getRecapParSalarie", authenticateToken, requireRole("admin", "com
     const ft = (r.forfait_trajet || "").trim();
     if (z) a.zones[z] = (a.zones[z] || 0) + hhmmToMinutes(r.depl_hhmm);
     if (ft) a.trajets[ft] = (a.trajets[ft] || 0) + hhmmToMinutes(r.depl_hhmm);
-    if (z && ft) a.combos[`${z}|||${ft}`] = (a.combos[`${z}|||${ft}`] || 0) + hhmmToMinutes(r.depl_hhmm);
+    if (z && ft) {
+      const key = `${z}|||${ft}`;
+      a.combos[key] = (a.combos[key] || 0) + hhmmToMinutes(r.depl_hhmm);
+    }
   });
   res.json(Object.values(agg).sort((a, b) => a.salarie.localeCompare(b.salarie, "fr", { sensitivity: "base" })));
 });
 
-// --- Start ---
+// Start
 app.listen(PORT, () => {
   console.log(`🔒 API SQLite sécurisée sur port ${PORT}`);
-  console.log(`⚠️ JWT_SECRET défini : ${JWT_SECRET ? "oui" : "non"}`);
 });
