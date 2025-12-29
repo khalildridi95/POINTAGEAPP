@@ -152,11 +152,13 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
 // ----------- AUTH JWT -----------
-const publicPaths = new Set([
-  "/ping",
-  "/login",
-  "/getIdentifiants"
-]);
+const publicPaths = new Set(["/ping", "/login", "/getIdentifiants"]);
+
+app.use("/api", (req, res, next) => {
+  if (req.method === "OPTIONS") return next();  // préflight CORS
+  if (publicPaths.has(req.path)) return next(); // routes publiques
+  return requireAuth(req, res, next);           // protégé
+});
 
 app.use("/api", (req, res, next) => {
   if (req.method === "OPTIONS") return next();           // préflight
