@@ -13,9 +13,9 @@ const __dirname = path.dirname(__filename);
 // --- CONFIG ---
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
-const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_ME_IN_PRODUCTION_12345ABCDE"; // ⚠️ changer en prod
+const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_ME_IN_PRODUCTION_12345ABCDE"; // ⚠️ change en prod
 
-// --- CORS ---
+// --- CORS (autorise front local + Render + GitHub Pages) ---
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -27,6 +27,7 @@ const allowedOrigins = [
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
 
+// Tables
 db.exec(`
 CREATE TABLE IF NOT EXISTS employes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS payes_validation (
 );
 `);
 
+// Seed
 const rowCount = db.prepare("SELECT COUNT(*) AS n FROM employes").get().n;
 if (rowCount === 0) {
   db.prepare(`
@@ -100,7 +102,7 @@ if (rowCount === 0) {
   console.log("✅ Seed employes: demo/demo (admin)");
 }
 
-// Helpers temps
+// Helpers
 function hhmmToMinutes(s) {
   if (!s) return 0;
   const m = String(s).trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -123,7 +125,7 @@ function computeDurationMinutes(debut, fin, pause, reprise) {
   return Math.max(0, dur);
 }
 
-// Middleware JWT
+// Auth middleware
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -137,7 +139,8 @@ function authenticateToken(req, res, next) {
 }
 function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(String(req.user.role || "user").toLowerCase())) {
+    const r = String(req.user?.role || "user").toLowerCase();
+    if (!roles.map(x => x.toLowerCase()).includes(r)) {
       return res.status(403).json({ error: "Accès refusé" });
     }
     next();
@@ -156,7 +159,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
-// AUTH
+// ---------- AUTH ----------
 app.post("/api/login", (req, res) => {
   const { login, password } = req.body || {};
   if (!login || !password) return res.status(400).json({ error: "Login et mot de passe requis" });
@@ -175,7 +178,7 @@ app.get("/api/verify", authenticateToken, (req, res) => {
   res.json({ valid: true, user: req.user });
 });
 
-// Public (compat legacy)
+// ---------- PUBLIC (compat) ----------
 app.get("/api/getIdentifiants", (_req, res) => {
   const list = db.prepare("SELECT DISTINCT nom FROM employes ORDER BY nom COLLATE NOCASE").all().map(r => r.nom);
   res.json(list);
@@ -193,7 +196,7 @@ app.post("/api/getRoleForLogin", (req, res) => {
   res.json(role === "administrateur" ? "admin" : role);
 });
 
-// Protégé
+// ---------- PROTECTED ----------
 app.get("/api/getEmployes", authenticateToken, requireRole("admin"), (_req, res) => {
   const rows = db.prepare("SELECT nom,email,password,role,matricule FROM employes ORDER BY nom COLLATE NOCASE").all();
   res.json(rows);
@@ -428,12 +431,12 @@ app.post("/api/getPlanningForUser", authenticateToken, (req, res) => {
 // Paye validée (user voit ses données)
 app.post("/api/getPayeValidee", authenticateToken, (req, res) => {
   const { dateFrom, dateTo, salarie } = req.body || {};
-  const forceUser = req.user.role === "user" ? req.user.nom : salarie;
+  const filterSalarie = req.user.role === "user" ? req.user.nom : salarie;
   const rows = db.prepare("SELECT * FROM payes_validation ORDER BY date, salarie COLLATE NOCASE").all();
   const out = rows.filter(r =>
     (!dateFrom || r.date >= dateFrom) &&
     (!dateTo || r.date <= dateTo) &&
-    (!forceUser || (r.salarie || "").toLowerCase() === forceUser.toLowerCase())
+    (!filterSalarie || (r.salarie || "").toLowerCase() === filterSalarie.toLowerCase())
   ).map(r => ({
     date: r.date,
     salarie: r.salarie,
@@ -524,15 +527,13 @@ app.post("/api/getRecapParSalarie", authenticateToken, requireRole("admin", "com
     const ft = (r.forfait_trajet || "").trim();
     if (z) a.zones[z] = (a.zones[z] || 0) + hhmmToMinutes(r.depl_hhmm);
     if (ft) a.trajets[ft] = (a.trajets[ft] || 0) + hhmmToMinutes(r.depl_hhmm);
-    if (z && ft) {
-      const key = `${z}|||${ft}`;
-      a.combos[key] = (a.combos[key] || 0) + hhmmToMinutes(r.depl_hhmm);
-    }
+    if (z && ft) a.combos[`${z}|||${ft}`] = (a.combos[`${z}|||${ft}`] || 0) + hhmmToMinutes(r.depl_hhmm);
   });
   res.json(Object.values(agg).sort((a, b) => a.salarie.localeCompare(b.salarie, "fr", { sensitivity: "base" })));
 });
 
-// Start
+// --- Start ---
 app.listen(PORT, () => {
   console.log(`🔒 API SQLite sécurisée sur port ${PORT}`);
+  console.log(`⚠️ JWT_SECRET défini : ${JWT_SECRET ? "oui" : "non"}`);
 });
