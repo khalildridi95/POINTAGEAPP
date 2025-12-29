@@ -69,15 +69,17 @@
       touch-action:pan-y;
     }
     /* le conteneur planning défile maintenant (scroll interne) */
-    #planningPanel .planning-container{
-      max-height:calc(100vh - 300px); /* aligné sur la réserve de l'historique */
-      min-height:120px;
-      overflow:auto;
-      -webkit-overflow-scrolling:touch;
-      border:1px solid #e5e7eb;
-      background:#fff;
-      box-sizing:border-box;
-    }
+   #planningPanel .planning-container{
+    max-height:calc(100vh - 300px); /* identique à l'historique */
+    min-height:120px;
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    margin:0;
+    padding-bottom:0;
+    border:1px solid #e5e7eb;
+    background:#fff;
+    box-sizing:border-box;
+  }
 
     .h-scrollbar{
       position:sticky;top:0;z-index:5;height:12px;background:#f1f5f9;overflow-x:auto;overflow-y:hidden;scrollbar-gutter:stable both-edges;
@@ -194,14 +196,13 @@
        display:flex;
   flex-direction:column;
     }
-#validesPanel .table-wrap{
-  flex:1 1 auto;
-  max-height:calc(100vh - 320px); /* baisse la valeur pour réduire la hauteur visible */
-  overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  margin:0;
-  padding-bottom:0; /* évite l'espace vide en bas */
-}
+ #validesPanel .table-wrap{
+    max-height:calc(100vh - 300px); /* identique à l'historique */
+    overflow:auto;
+    -webkit-overflow-scrolling:touch;
+    margin:0;
+    padding-bottom:0;
+  }
   </style>
 </head>
 
