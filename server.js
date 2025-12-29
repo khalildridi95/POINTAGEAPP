@@ -18,19 +18,14 @@ const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-please";
 const JWT_EXPIRES_IN = "12h";
-const IS_PROD = process.env.NODE_ENV === "production";
+
+// Cookie options pour cross-site (front GitHub Pages -> backend Render)
 const COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: "none",   // important pour cross-site
   secure: true,       // obligatoire avec SameSite=None
-  maxAge: 12 * 60 * 60 * 1000
+  maxAge: 12 * 60 * 60 * 1000, // 12h
 };
-
-// Login
-res.cookie("auth_token", token, COOKIE_OPTIONS);
-
-// Logout
-res.clearCookie("auth_token", COOKIE_OPTIONS);
 
 // --- CORS ---
 const allowedOrigins = [
@@ -44,7 +39,7 @@ const allowedOrigins = [
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
 
-// Tables
+// Création des tables si absentes
 db.exec(`
 CREATE TABLE IF NOT EXISTS employes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,7 +173,7 @@ function requireAuth(req, res, next) {
   }
 }
 
-// Garde globale /api
+// Garde globale sur /api
 app.use("/api", (req, res, next) => {
   if (req.method === "OPTIONS") return next();
   if (publicPaths.has(req.path)) return next();
@@ -192,28 +187,19 @@ app.post("/api/login", (req, res) => {
   const row = db.prepare("SELECT nom, password, role, matricule FROM employes WHERE lower(nom)=lower(?)").get(login);
   if (!row) return res.status(401).json({ error: "invalid credentials" });
 
-  // Si tu hashes : if (!bcrypt.compareSync(password, row.password)) return res.status(401).json({error:"invalid credentials"});
+  // Si tu hashes : if (!bcrypt.compareSync(password, row.password)) return res.status(401).json({ error: "invalid credentials" });
   if (row.password !== password) return res.status(401).json({ error: "invalid credentials" });
 
   const payload = { login: row.nom, role: (row.role || "user").toLowerCase(), matricule: row.matricule || "" };
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-  res.cookie("auth_token", token, {
-    httpOnly: true,
-    sameSite: IS_PROD ? "none" : "lax",
-    secure: IS_PROD,
-    maxAge: 12 * 60 * 60 * 1000,
-  });
+  res.cookie("auth_token", token, COOKIE_OPTIONS);
   res.json({ ok: true, role: payload.role });
 });
 
 // Logout
 app.post("/api/logout", (_req, res) => {
-  res.clearCookie("auth_token", {
-    httpOnly: true,
-    sameSite: IS_PROD ? "none" : "lax",
-    secure: IS_PROD,
-  });
+  res.clearCookie("auth_token", COOKIE_OPTIONS);
   res.json({ ok: true });
 });
 
@@ -223,7 +209,7 @@ app.get("/api/getIdentifiants", (req, res) => {
   res.json(list);
 });
 
-// (checkLogin et getRoleForLogin restent pour compat, mais login principal = /api/login)
+// Compat (non utilisé si tu passes par /api/login)
 app.post("/api/checkLogin", (req, res) => {
   const { login, password } = req.body || {};
   if (!login || !password) return res.json(false);
