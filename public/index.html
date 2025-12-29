@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>PCELEC - Connexion</title>
+  <title>PCELEC</title>
   <style>
     :root{--primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;}
     html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#111;}
@@ -60,24 +60,18 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
+   const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000/api"
+    : "https://pointage-oeax.onrender.com/api";
 
     let loadTimer=null, loadProgress=0;
 
     window.onload = function(){
       chargerIdentifiants();
-      const savedUser = localStorage.getItem('user');
-      const savedRole = localStorage.getItem('role');
-      const savedToken = localStorage.getItem('token');
-      if (savedUser && savedRole && savedToken) {
-        redir(savedRole);
-      }
     };
 
     async function fetchJSON(url, options){
-      const token = localStorage.getItem('token');
-      const headers = { ...(options?.headers||{}), ...(token ? { Authorization: 'Bearer ' + token } : {}) };
-      const res = await fetch(url, { ...options, headers });
+      const res = await fetch(url, options || {});
       if(!res.ok) throw new Error(res.status+" "+res.statusText);
       return res.json();
     }
@@ -114,7 +108,7 @@
     function clearAllErrors(){ document.querySelectorAll('.error-text').forEach(e=>{ e.textContent=''; e.style.display='none'; }); }
     function showError(id,msg){ const el=document.getElementById('err_'+id); if(!el) return; el.textContent=msg||''; el.style.display=msg?'block':'none'; }
 
-    async function seConnecter(){
+    function seConnecter(){
       clearAllErrors();
       const btn=document.getElementById('btnLogin');
       const login=document.getElementById('login').value;
@@ -130,30 +124,35 @@
       startLoading('Validation des accès...');
       if(btn) btn.disabled=true;
 
-      try {
-        const resp = await fetchJSON(API_BASE + "/login", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ login, password: pass })
-        });
-        stopLoading(true);
-        localStorage.setItem('token', resp.token);
-        localStorage.setItem('user', resp.user.nom);
-        localStorage.setItem('role', resp.user.role || 'user');
-        localStorage.setItem('matricule', resp.user.matricule || '');
-        redir(resp.user.role || 'user');
-      } catch(e) {
+      fetchJSON(API_BASE + "/checkLogin", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ login, password: pass })
+      })
+      .then(ok=>{
+        if(ok){
+          return fetchJSON(API_BASE + "/getRoleForLogin", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ login })
+          }).then(role=>{
+            try{ localStorage.setItem('userLogin', login); }catch(e){}
+            stopLoading(true);
+            if(role==='admin') window.location.href = "./admin.html?u="+encodeURIComponent(login);
+            else if(role==='compta') window.location.href = "./validation.html?u="+encodeURIComponent(login);
+            else window.location.href = "./salarie.html?u="+encodeURIComponent(login);
+          });
+        } else {
+          stopLoading(false);
+          if(loginMsg){ loginMsg.textContent='Mot de passe incorrect'; loginMsg.style.display='block'; }
+          if(btn) btn.disabled=false;
+        }
+      })
+      .catch(()=>{
         stopLoading(false);
-        if(loginMsg){ loginMsg.textContent='Mot de passe incorrect ou erreur serveur'; loginMsg.style.display='block'; }
+        if(loginMsg){ loginMsg.textContent='Erreur vérification'; loginMsg.style.display='block'; }
         if(btn) btn.disabled=false;
-      }
-    }
-
-    function redir(role){
-      const r = (role||'user').toLowerCase();
-      if(r==='admin') window.location.href = "./admin.html";
-      else if(r==='compta') window.location.href = "./validation.html";
-      else window.location.href = "./salarie.html";
+      });
     }
   </script>
 </body>
