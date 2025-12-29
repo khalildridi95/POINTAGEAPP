@@ -540,6 +540,25 @@
       if (dt) dt.value = iso(sunday);
     }
 
+
+    function majTypePersonne(){
+  const val = document.getElementById('typePersonne').value;
+  const formSections = document.getElementById('form-sections');
+  const blocInterim = document.getElementById('bloc-interimaire');
+  const entriesSection = document.getElementById('entries-section');
+  if (val === 'salarie') {
+    formSections.classList.remove('hidden');
+    blocInterim.classList.add('hidden');
+    entriesSection.classList.remove('hidden');
+  } else if (val === 'interimaire') {
+    formSections.classList.remove('hidden');
+    blocInterim.classList.remove('hidden');
+    entriesSection.classList.add('hidden');
+  } else {
+    formSections.classList.add('hidden');
+  }
+}
+
     function setDefaultValidesDates(){
       const today = new Date();
       const start = new Date(); start.setDate(today.getDate()-7);
