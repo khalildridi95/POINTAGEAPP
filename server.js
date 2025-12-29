@@ -6,7 +6,9 @@ import bodyParser from "body-parser";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
-import jwt from "jsonwebtoken"; // JWT sans cookie
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
+// Si tu hashes les mots de passe : import bcrypt from "bcryptjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +18,14 @@ const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-please";
 const JWT_EXPIRES_IN = "12h";
+
+// Cookie options pour cross-site (front GitHub Pages -> backend Render)
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: "none",   // important pour cross-site
+  secure: true,       // obligatoire avec SameSite=None
+  maxAge: 12 * 60 * 60 * 1000, // 12h
+};
 
 // --- CORS ---
 const allowedOrigins = [
@@ -29,7 +39,7 @@ const allowedOrigins = [
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
 
-// Tables
+// Création des tables si absentes
 db.exec(`
 CREATE TABLE IF NOT EXISTS employes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,11 +139,12 @@ function computeDurationMinutes(debut, fin, pause, reprise) {
 
 // --- Express app ---
 const app = express();
+app.use(cookieParser());
 app.use(cors({
   origin: allowedOrigins,
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false, // pas de cookie
+  credentials: true,
 }));
 app.use(bodyParser.json());
 
@@ -143,22 +154,26 @@ app.use(express.static(path.join(__dirname, "public")));
 // Santé
 app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
-// ----------- AUTH JWT (Bearer) -----------
+// ----------- AUTH JWT -----------
 const publicPaths = new Set(["/ping", "/login", "/getIdentifiants"]);
 
 function requireAuth(req, res, next) {
-  const auth = req.headers.authorization || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  const cookieToken = req.cookies?.auth_token;
+  const headerToken = (req.headers.authorization || "").startsWith("Bearer ")
+    ? req.headers.authorization.slice(7)
+    : null;
+  const token = cookieToken || headerToken;
   if (!token) return res.status(401).json({ error: "unauthorized" });
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
     return next();
-  } catch {
+  } catch (e) {
     return res.status(401).json({ error: "unauthorized" });
   }
 }
 
-// Garde globale /api
+// Garde globale sur /api
 app.use("/api", (req, res, next) => {
   if (req.method === "OPTIONS") return next();
   if (publicPaths.has(req.path)) return next();
@@ -172,12 +187,20 @@ app.post("/api/login", (req, res) => {
   const row = db.prepare("SELECT nom, password, role, matricule FROM employes WHERE lower(nom)=lower(?)").get(login);
   if (!row) return res.status(401).json({ error: "invalid credentials" });
 
-  // Si tu hashes : if (!bcrypt.compareSync(password, row.password)) return res.status(401).json({error:"invalid credentials"});
+  // Si tu hashes : if (!bcrypt.compareSync(password, row.password)) return res.status(401).json({ error: "invalid credentials" });
   if (row.password !== password) return res.status(401).json({ error: "invalid credentials" });
 
   const payload = { login: row.nom, role: (row.role || "user").toLowerCase(), matricule: row.matricule || "" };
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-  res.json({ ok: true, role: payload.role, token });
+
+  res.cookie("auth_token", token, COOKIE_OPTIONS);
+  res.json({ ok: true, role: payload.role });
+});
+
+// Logout
+app.post("/api/logout", (_req, res) => {
+  res.clearCookie("auth_token", COOKIE_OPTIONS);
+  res.json({ ok: true });
 });
 
 // ----------- AUTH / LISTES -----------
