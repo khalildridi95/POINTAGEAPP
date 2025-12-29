@@ -180,22 +180,23 @@
 
     /* Pointages validés - limiter le panneau et le tableau interne */
     #validesPanel{
-      position:fixed;left:0;right:0;bottom:20px;
-      max-height:calc(100vh - 180px); /* aligné sur historique */
-      background:#fff;border-radius:16px;padding:16px;box-shadow:0 24px 90px rgba(2,6,23,0.2);
-      
-      overscroll-behavior:none;display:none;z-index:50;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:11px;touch-action:pan-y;
-overflow:hidden; /
-       display:flex;
-  flex-direction:column;
+      position:fixed; left:0; right:0; bottom:20px;
+      max-height:calc(100vh - 180px);
+      background:var(--card);
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 24px 90px rgba(2,6,23,0.2);
+      overflow:auto;
+      overscroll-behavior:none;
+      display:none; z-index:50;
+      padding-bottom:calc(22px + env(safe-area-inset-bottom));
+      font-size:11px;
+      touch-action:pan-y;
     }
   #validesPanel .table-wrap{
-    flex:1 1 auto;
-    max-height:calc(100vh - 300px); /* même réserve que l’historique */
-    overflow:auto;                  /* scroll interne */
-    -webkit-overflow-scrolling:touch;
-    margin:0;
-    padding-bottom:48px;
+     max-height:calc(100vh - 300px);
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
   }
   </style>
 </head>
