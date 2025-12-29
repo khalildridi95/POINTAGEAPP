@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Admin - PCELEC (sécurisé)</title>
+  <title>Admin - PCELEC (local)</title>
 
   <!-- jsPDF & autotable -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -28,11 +28,13 @@
     input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:15px;box-sizing:border-box;background:#fff;}
     button{color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600;}
     button.secondary{background:#475569;}
-    button.ghost{background:#fff;color:#0f172a;border:1px solid #e2e8f0;}
+    button.ghost{background:#fff;color:#0f172a;border:1px solid #var(--border);}
     .btn-primary{background:#2563eb;}
     .btn-green{background:#16a34a;}
     .btn-orange{background:#f97316;}
     .btn-slate{background:#0f172a;}
+    .btn-yellow{background:#eab308;color:#0f172a;}
+    .btn-blue{background:#2563eb;color:#fff;border:1px solid #2563eb;}
     .status-green{color:var(--success);font-weight:700;}
     .status-orange{color:var(--warn);font-weight:700;}
     .status-red{color:var(--danger);font-weight:700;}
@@ -57,9 +59,31 @@
     .pill-actions{display:inline-flex;gap:6px;margin-left:6px;font-size:12px;}
     .drop-target{border:2px dashed #cbd5e1;min-height:40px;padding:4px;border-radius:6px;}
     .drag-over{background:#e0f2fe;}
-    #historyPanel{position:fixed;left:0;right:0;bottom:60px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px 32px 24px 24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;display:none;z-index:2000;}
-    .modal-backdrop{position:fixed; inset:0; display:none; align-items:flex-start; justify-content:center;background:rgba(0,0,0,0.35); z-index:2500; padding:16px; overflow:auto;}
-    .modal{background:#fff; border-radius:12px; padding:20px;max-width:1100px; width:100%; max-height:90vh; overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,0.18);}
+    #historyPanel{position:fixed;left:0;right:0;bottom:60px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px 32px 24px 24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:2000;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;scrollbar-width: var(--scrollbar-size);}
+    #historyPanel::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
+    #historyPanel::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    #historyPanel::-webkit-scrollbar-track{ background:#f8fafc; }
+    #historyHeader{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    #historyFilters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    #historyFilters input[type="date"], #historyFilters select{padding:6px;border:1px solid #ddd;border-radius:6px;}
+    .h-scrollbar{position:sticky; top:0; z-index:5; height:16px; background:#f1f5f9;overflow-x:auto; overflow-y:hidden; scrollbar-gutter:stable both-edges; scrollbar-width: var(--scrollbar-size);}
+    .h-scrollbar::-webkit-scrollbar{ height:var(--scrollbar-size); }
+    .h-scrollbar::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    .h-scrollbar-inner{height:1px;}
+    .history-table-wrap{overflow:auto; max-height:calc(100vh - 220px); -webkit-overflow-scrolling:touch;overscroll-behavior:none; width:100%; transform:translateZ(0); margin-bottom:24px; scrollbar-width: var(--scrollbar-size);}
+    .history-table-wrap::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
+    .history-table-wrap::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
+    .history-table-wrap::-webkit-scrollbar-track{ background:#f8fafc; }
+    .history-table{min-width:100%;border-collapse:collapse;font-size:15px;width:auto;}
+    .history-table th,.history-table td{border:12px solid #eee;padding:14px;text-align:left;box-sizing:border-box;}
+    .history-table tbody tr:nth-child(odd){background:#ffffff;}
+    .history-table tbody tr:nth-child(even){background:#e0f2ff;}
+    .history-table th{background:#fbfbfb;position:sticky;top:0;z-index:10;}
+    .history-table th:nth-child(7),
+    .history-table td:nth-child(7) { min-width: 220px; max-width: 340px; }
+
+    .modal-backdrop{position:fixed; inset:0; display:none; align-items:flex-start; justify-content:center;background:rgba(0,0,0,0.35); z-index:2500; padding:16px; overflow:auto; -webkit-overflow-scrolling:touch;}
+    .modal{background:#fff; border-radius:12px; padding:20px;max-width:1100px; width:100%; max-height:90vh; overflow:auto; -webkit-overflow-scrolling:touch;box-shadow:0 24px 60px rgba(0,0,0,0.18);}
     .modal header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;}
     .modal table{width:100%;border-collapse:collapse;font-size:14px;}
     .modal th,.modal td{border:1px solid #e5e7eb;padding:8px;text-align:left;}
@@ -233,45 +257,11 @@
   </div>
 
   <script>
-    // --- Config API ---
-   const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const API_BASE = IS_LOCAL
-  ? "http://localhost:3000/api"
-  : "https://pointage-oeax.onrender.com/api"; // ton backend Render en HTTPS
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000/api"
+    : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
-
-    // --- Auth helpers ---
-    function getToken(){ try { return localStorage.getItem('token') || ''; } catch(e){ return ''; } }
-    function setToken(t){ try { localStorage.setItem('token', t); } catch(e){} }
-    function clearSession(){ try{ localStorage.removeItem('token'); localStorage.removeItem('userLogin'); }catch(e){} }
-
-    async function apiFetch(path, options={}){
-      const token = getToken();
-      const headers = options.headers || {};
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      const res = await fetch(API_BASE + path, { ...options, headers });
-      if (res.status === 401 || res.status === 403) { redirectToLogin(); return Promise.reject('unauthorized'); }
-      if (!res.ok) throw new Error(res.status+" "+res.statusText);
-      return res.json();
-    }
-    const apiGet = (p)=>apiFetch(p);
-    const apiPost = (p,body)=>apiFetch(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})});
-
-    function redirectToLogin(){ clearSession(); window.location.href='index.html'; }
-    async function ensureAdmin() {
-      const token = getToken();
-      if (!token) { redirectToLogin(); return null; }
-      try {
-        const v = await apiFetch('/verify');
-        const role = (v.user?.role || '').toLowerCase();
-        if (role !== 'admin') { redirectToLogin(); return null; }
-        try { localStorage.setItem('userLogin', v.user.nom || ''); } catch(e){}
-        return v.user.nom || '';
-      } catch(e) {
-        redirectToLogin();
-        return null;
-      }
-    }
 
     let currentUser = '';
     let employes = [];
@@ -287,7 +277,7 @@ const API_BASE = IS_LOCAL
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ clearSession(); window.location.href = 'index.html'; }
+    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
 
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
@@ -300,10 +290,22 @@ const API_BASE = IS_LOCAL
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
+    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
+    async function apiGet(path){ return fetchJSON(API_BASE+path); }
+    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
+
+    function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
+    function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
+
+    function openArchiveModal(){}
+    function closeArchiveModal(){}
+    function onClickExportArchive(btn){}
+    function onClickCleanApp(btn){}
+
     async function initApp(){
-      const login = await ensureAdmin();
-      if (!login) return;
-      currentUser = login;
+      const params = new URLSearchParams(window.location.search);
+      currentUser = params.get('u') || '';
+      if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
@@ -321,6 +323,20 @@ const API_BASE = IS_LOCAL
       loadHistory();
     }
     window.onload = initApp;
+
+    function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
+    function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
+    function getRange(){
+      if(viewMode==='week'){ const s=startOfWeek(anchorDate); const e=addDays(s,6); return {start:s,end:e,label:fmtDateLocal(s)+' → '+fmtDateLocal(e)}; }
+      else if(viewMode==='two'){ const s=startOfWeek(anchorDate); const e=addDays(s,13); return {start:s,end:e,label:fmtDateLocal(s)+' → '+fmtDateLocal(e)}; }
+      else { const s=new Date(anchorDate.getFullYear(),anchorDate.getMonth(),1); const e=new Date(anchorDate.getFullYear(),anchorDate.getMonth()+1,0); const lbl=s.toLocaleString('fr-FR',{month:'long',year:'numeric'}); return {start:s,end: e, label: lbl.charAt(0).toUpperCase()+lbl.slice(1)}; }
+    }
+    async function loadRangePlanning(){
+      const {start,end,label} = getRange();
+      const wl=document.getElementById('weekLabel'); if(wl) wl.textContent=label;
+      await loadPlanningRange(start,end);
+      renderPlanning(start,end);
+    }
 
     async function loadEmployees(){
       try{
@@ -557,7 +573,7 @@ const API_BASE = IS_LOCAL
       planning.splice(idx,1);
       const {start,end} = getRange(); renderPlanning(start,end); if(autoSaveEnabled) triggerAutoSave('delete');
     }
-    function triggerAutoSave(){
+    function triggerAutoSave(reason){
       if(!autoSaveEnabled) return;
       const ps = document.getElementById('planStatus');
       if(ps) ps.textContent = 'Auto: sauvegarde...';
@@ -684,7 +700,8 @@ const API_BASE = IS_LOCAL
       const hasRowIdx = header[header.length-1] === 'ROW_INDEX';
       const visibleHeader = hasRowIdx ? header.slice(0,-1) : header;
 
-      let html='<div class="history-table-wrap"><table class="history-table"><thead><tr>';
+      let html='<div class="h-scrollbar"><div class="h-scrollbar-inner"></div></div>';
+      html+='<div class="history-table-wrap"><table class="history-table"><thead><tr>';
       visibleHeader.forEach(h=>html+='<th>'+escapeHtml(h||'')+'</th>');
       html+='<th>Actions</th></tr></thead><tbody>';
 
@@ -710,8 +727,11 @@ const API_BASE = IS_LOCAL
           <button class="ghost action-btn" onclick="deleteHistoryRow(this)">🗑</button>
         </td>`;
       }
-      html+='</tbody></table></div>';
+      html+='</tbody></table><div style="height:40px;"></div></div>';
       content.innerHTML=html;
+
+      const wrap = content.querySelector('.history-table-wrap'); const hsb = content.querySelector('.h-scrollbar'); const hsbInner = content.querySelector('.h-scrollbar-inner');
+      if(wrap && hsb && hsbInner){ hsbInner.style.width = wrap.scrollWidth + 'px'; hsb.scrollLeft = wrap.scrollLeft; hsb.addEventListener('scroll', ()=>{ wrap.scrollLeft = hsb.scrollLeft; }); wrap.addEventListener('scroll', ()=>{ hsb.scrollLeft = wrap.scrollLeft; }); }
     }
     function toIsoDate(str){
       if(!str) return '';
