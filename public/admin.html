@@ -315,6 +315,10 @@ async function fetchJSON(url, options) {
     async function initApp(){
       const params = new URLSearchParams(window.location.search);
       currentUser = params.get('u') || '';
+      if (!currentUser) {
+  window.location.href = "index.html";
+  return;
+}
       if (!currentUser) { try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){} }
       document.getElementById('adminUser').textContent = currentUser || '(?)';
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
