@@ -4,6 +4,42 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>PCELEC</title>
+
+  <!-- Garde-fou d’authentification : accepte param ?u= ou localStorage; redirige si rien -->
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const paramUserRaw = (params.get('u') || '').trim();
+      const paramUserLc  = paramUserRaw.toLowerCase();
+
+      let storedUser = '';
+      try { storedUser = (localStorage.getItem('userLogin') || '').trim(); } catch (e) {}
+      const storedUserLc = storedUser.toLowerCase();
+
+      let effectiveUser = '';
+
+      if (paramUserRaw && !storedUser) {
+        effectiveUser = paramUserRaw;
+        try { localStorage.setItem('userLogin', effectiveUser); } catch (e) {}
+      } else if (paramUserRaw && storedUser && paramUserLc !== storedUserLc) {
+        effectiveUser = paramUserRaw;
+        try { localStorage.setItem('userLogin', effectiveUser); } catch (e) {}
+      } else if (paramUserRaw) {
+        effectiveUser = paramUserRaw;
+      } else if (storedUser) {
+        effectiveUser = storedUser;
+      }
+
+      if (!effectiveUser) {
+        location.replace('index.html');
+        return;
+      }
+
+      window.__APP_AUTH_OK = true;
+      window.__APP_USER = effectiveUser;
+    })();
+  </script>
+
   <style>
     :root{
       --primary:#1976d2;--muted:#6b7280;--bg:#fafafa;--card:#fff;--radius:8px;
@@ -322,7 +358,7 @@
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Actualiser</button>
         <button class="small" onclick="exportValidesPDF()" style="padding:6px 8px; font-size:12px; min-height:28px;">Exporter PDF</button>
-        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px;">Fermer</button>
+        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Fermer</button>
       </div>
     </div>
 
@@ -447,7 +483,7 @@
       const r = await fetch(API_BASE + path,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(body||{})
+        body: JSON.stringify(body||{})
       });
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
@@ -471,51 +507,14 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    // --- Sécurité frontend : guard accès salarié ---
-    const ALLOWED_ROLE = 'user';
-    function redirectToLogin() {
-      try { localStorage.removeItem('userLogin'); } catch(e){}
-      window.location.href = 'index.html';
-    }
-    async function fetchRole(login) {
-      if (!login) return null;
-      if (USE_LOCAL) {
-        try { return await apiPost('/getRoleForLogin', { login }); } catch(e){ return null; }
+    window.onload = function(){
+      if (!window.__APP_AUTH_OK) {
+        const err = document.getElementById('err_global');
+        if (err) { err.textContent = 'Session expirée ou non authentifiée. Redirection...'; err.style.display = 'block'; }
+        return;
       }
-      return new Promise((resolve) => {
-        try {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(() => resolve(null))
-            .getRoleForLogin(login);
-        } catch(e) { resolve(null); }
-      });
-    }
-    async function ensureAuthenticatedUserPage() {
-      let login = '';
-      const params = new URLSearchParams(window.location.search);
-      login = params.get('u') || '';
-      if (!login) {
-        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      if (!login) { redirectToLogin(); return null; }
+      currentUser = window.__APP_USER || '';
 
-      const role = await fetchRole(login);
-      if (role && role.toLowerCase() !== ALLOWED_ROLE) {
-        // Empêche l'accès aux pages non autorisées (admin/compta)
-        redirectToLogin();
-        return null;
-      }
-      try { localStorage.setItem('userLogin', login); } catch(e){}
-      return login;
-    }
-    // -------------------------------------------------
-
-    window.onload = async function(){
-      const login = await ensureAuthenticatedUserPage();
-      if (!login) return; // redirect already done
-      const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || login;
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
@@ -1344,15 +1343,11 @@
       const camps = new Set();
       for(let i=1;i<cachedHistory.length;i++){
         const row = cachedHistory[i];
-        if(historyHeaderIndices.nom>=0) names.add((row[historyHeaderIndices.nom]||'').toString().trim());
-        if(historyHeaderIndices.camping>=0) camps.add((row[historyHeaderIndices.camping]||'').toString().trim());
+        if(historyHeaderIndices.nom>=0) names.add(row[historyHeaderIndices.nom]||'');
+        if(historyHeaderIndices.camping>=0) camps.add(row[historyHeaderIndices.camping]||'');
       }
-      Array.from(names).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{
-        const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o);
-      });
-      Array.from(camps).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{
-        const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o);
-      });
+      Array.from(names).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ if(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); }});
+      Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
     }
 
     function applyHistoryFilters(){
