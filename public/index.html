@@ -70,16 +70,19 @@
       chargerIdentifiants();
     };
 
-    // Helper fetch avec credentials et anti-boucle
+    function getToken() {
+      try { return localStorage.getItem("auth_token") || ""; } catch { return ""; }
+    }
+
+    // Helper fetch avec Bearer + anti-boucle
     async function fetchJSON(url, options){
-      const res = await fetch(url, { credentials: "include", ...(options || {}) });
+      const token = getToken();
+      const headers = { "Content-Type": "application/json", ...(options?.headers || {}) };
+      if (token) headers.Authorization = "Bearer " + token;
+      const res = await fetch(url, { ...(options||{}), headers });
       if (res.status === 401) {
-        // On est déjà sur la page de login : pas de redirection en boucle
-        const isLoginPage =
-          location.pathname.endsWith("index.html") ||
-          location.pathname === "/" ||
-          location.pathname === "";
-        if (!isLoginPage) window.location.href = "index.html";
+        localStorage.removeItem("auth_token");
+        window.location.href = "index.html";
         throw new Error("unauthorized");
       }
       if(!res.ok) throw new Error(res.status+" "+res.statusText);
@@ -135,13 +138,12 @@
       if(btn) btn.disabled=true;
 
       try {
-        // Auth principale via /api/login (met le cookie JWT SameSite=None; Secure)
         const res = await fetchJSON(API_BASE + "/login", {
           method:"POST",
           headers:{"Content-Type":"application/json"},
           body: JSON.stringify({ login, password: pass })
         });
-        // Sauvegarde locale pour info
+        localStorage.setItem("auth_token", res.token);
         try{ localStorage.setItem('userLogin', login); }catch(e){}
         stopLoading(true);
         const role = (res && res.role) || 'user';
