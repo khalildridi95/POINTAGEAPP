@@ -19,7 +19,7 @@
     select,input[type="time"],input[type="text"],input[type="password"],textarea,input[type="date"]{display:block;width:100%!important;padding:9px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;background:#fff;box-sizing:border-box;-webkit-text-size-adjust:100%;}
     textarea{min-height:120px;}
     .card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:0 12px 32px rgba(16,24,40,0.06);margin-bottom:20px;}
-    .muted{color:#6b7280;font-size:13px;}
+    .muted{color:var(--muted);font-size:13px;}
     .actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
     button{background:var(--primary);color:#fff;border:none;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;font-size:15px;min-height:32px;}
     button.secondary{background:#666;}
@@ -29,7 +29,7 @@
     .fixed-footer{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:40;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.92);backdrop-filter:blur(6px);}
     .fixed-footer.hidden{display:none}
     .footer-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .footer-right{color:#6b7280;font-size:13px;}
+    .footer-right{color:var(--muted);font-size:13px;}
 
     /* Historique */
     #historyPanel{
@@ -294,7 +294,7 @@
       </div>
     </div>
 
-    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
+    <div id="planningFilters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px.">
       <label style="font-size:12px;">Du
         <input type="date" id="planDateFrom" style="font-size:12px;padding:6px;">
       </label>
@@ -322,7 +322,7 @@
       <div style="display:flex;gap:6px;">
         <button class="small" onclick="actualiserValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Actualiser</button>
         <button class="small" onclick="exportValidesPDF()" style="padding:6px 8px; font-size:12px; min-height:28px;">Exporter PDF</button>
-        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px;">Fermer</button>
+        <button class="secondary small" onclick="fermerValides()" style="padding:6px 8px; font-size:12px; min-height:28px;">Fermer</button>
       </div>
     </div>
 
@@ -430,6 +430,26 @@
   </template>
 
   <script>
+    // --- Auth helpers ---
+    function getStoredToken(){ try { return localStorage.getItem('authToken') || ''; } catch(e){ return ''; } }
+    function parseJwt(token){
+      try { return JSON.parse(atob(token.split('.')[1] || '')); } catch(e){ return null; }
+    }
+    async function ensureAccess(rolesAllowed=['user','admin']){
+      const token = getStoredToken();
+      const payload = token ? parseJwt(token) : null;
+      const role = (payload && payload.role || '').toLowerCase();
+      const login = (payload && payload.login) || '';
+      if(!token || !payload || !rolesAllowed.includes(role)){
+        logout(true);
+        return false;
+      }
+      currentUser = login;
+      currentMatricule = payload.matricule || currentMatricule;
+      try { localStorage.setItem('userLogin', login); } catch(e){}
+      return true;
+    }
+
     // --- Config API Render / fallback local ---
     const USE_LOCAL = (typeof google === 'undefined' || !google.script || !google.script.run);
     const API_BASE = USE_LOCAL
@@ -439,14 +459,20 @@
       : '';
 
     async function apiGet(path){
-      const r = await fetch(API_BASE + path);
+      const headers = {};
+      const token = getStoredToken();
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const r = await fetch(API_BASE + path, { headers });
       if(!r.ok) throw new Error(r.statusText);
       return r.json();
     }
     async function apiPost(path, body){
+      const headers = {'Content-Type':'application/json'};
+      const token = getStoredToken();
+      if (token) headers['Authorization'] = 'Bearer ' + token;
       const r = await fetch(API_BASE + path,{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers,
         body:JSON.stringify(body||{})
       });
       if(!r.ok) throw new Error(r.statusText);
@@ -471,51 +497,21 @@
 
     function minToHHMM(m){ m=parseInt(m||0,10); const h=Math.floor(m/60); const mm=String(m%60).padStart(2,'0'); return `${h}:${mm}`; }
 
-    // --- Sécurité frontend : guard accès salarié ---
-    const ALLOWED_ROLE = 'user';
-    function redirectToLogin() {
-      try { localStorage.removeItem('userLogin'); } catch(e){}
-      window.location.href = 'index.html';
-    }
-    async function fetchRole(login) {
-      if (!login) return null;
-      if (USE_LOCAL) {
-        try { return await apiPost('/getRoleForLogin', { login }); } catch(e){ return null; }
-      }
-      return new Promise((resolve) => {
-        try {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(() => resolve(null))
-            .getRoleForLogin(login);
-        } catch(e) { resolve(null); }
-      });
-    }
-    async function ensureAuthenticatedUserPage() {
-      let login = '';
-      const params = new URLSearchParams(window.location.search);
-      login = params.get('u') || '';
-      if (!login) {
-        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      if (!login) { redirectToLogin(); return null; }
-
-      const role = await fetchRole(login);
-      if (role && role.toLowerCase() !== ALLOWED_ROLE) {
-        // Empêche l'accès aux pages non autorisées (admin/compta)
-        redirectToLogin();
-        return null;
-      }
-      try { localStorage.setItem('userLogin', login); } catch(e){}
-      return login;
-    }
-    // -------------------------------------------------
-
     window.onload = async function(){
-      const login = await ensureAuthenticatedUserPage();
-      if (!login) return; // redirect already done
+      const ok = await ensureAccess(['user','admin']);
+      if (!ok) return;
+
       const params = new URLSearchParams(window.location.search);
-      currentUser = params.get('u') || login;
+      const qUser = params.get('u');
+      if (qUser && qUser !== currentUser) currentUser = qUser;
+      if (!currentUser) {
+        try { currentUser = localStorage.getItem('userLogin') || ''; } catch(e){}
+      }
+      if (!currentUser) {
+        document.getElementById('userLabel').textContent = '';
+        showError('global', 'Utilisateur non identifié (paramètre manquant).');
+        return;
+      }
       document.getElementById('userLabel').textContent = currentUser;
 
       document.getElementById('fixedFooter').classList.remove('hidden');
@@ -1120,7 +1116,7 @@
 
     function setTransferStatus(text, ok){
       const el = document.getElementById('transferStatus');
-      el.textContent = text || '';
+      el.textContent = text or '';
       if (ok === true) { el.className = 'status-text status-green'; }
       else if (ok === false) { el.className = 'status-text status-red'; }
       else { el.className = 'status-text'; }
@@ -1344,15 +1340,11 @@
       const camps = new Set();
       for(let i=1;i<cachedHistory.length;i++){
         const row = cachedHistory[i];
-        if(historyHeaderIndices.nom>=0) names.add((row[historyHeaderIndices.nom]||'').toString().trim());
-        if(historyHeaderIndices.camping>=0) camps.add((row[historyHeaderIndices.camping]||'').toString().trim());
+        if(historyHeaderIndices.nom>=0) names.add(row[historyHeaderIndices.nom]||'');
+        if(historyHeaderIndices.camping>=0) camps.add(row[historyHeaderIndices.camping]||'');
       }
-      Array.from(names).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{
-        const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o);
-      });
-      Array.from(camps).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{
-        const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o);
-      });
+      Array.from(names).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(n=>{ if(n){ const o=document.createElement('option'); o.value=n; o.textContent=n; salSelect.appendChild(o); }});
+      Array.from(camps).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'})).forEach(c=>{ if(c){ const o=document.createElement('option'); o.value=c; o.textContent=c; campSelect.appendChild(o); }});
     }
 
     function applyHistoryFilters(){
@@ -1477,8 +1469,7 @@
         const sal = document.getElementById('histSalarie').value || '';
         const camp = document.getElementById('histCamping').value || '';
         const periodText = (df||dt)
-          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}`
-          : 'Période : toutes dates';
+          ? `Période : ${df?fmtDateDisplay(df):'...'} au ${dt?fmtDateDisplay(dt):'...'}` : 'Période : toutes dates';
         const salText = 'Salarié : ' + (sal||'Tous');
         const campText = 'Camping : ' + (camp||'Tous');
         const genDate = new Date();
@@ -1661,8 +1652,13 @@
         .replace(/'/g,'&#39;');
     }
 
-    window.logout = function(){ try { localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; };
+    function logout(force){
+      try { localStorage.removeItem('userLogin'); localStorage.removeItem('authToken'); }catch(e){}
+      if(force) { window.location.href = 'index.html'; return; }
+      window.location.href = 'index.html';
+    }
 
+    window.logout = logout;
     window.ajouterInterimaire = ajouterInterimaire;
     window.viderInterimaires = viderInterimaires;
     window.supprimerInterimaire = supprimerInterimaire;
