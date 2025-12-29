@@ -153,10 +153,16 @@ app.get("/api/ping", (_req, res) => res.json({ pong: true }));
 
 // ----------- AUTH JWT -----------
 const publicPaths = new Set([
-  "/api/ping",
-  "/api/login",
-  "/api/getIdentifiants" // garde publique pour pré-remplir la liste des logins
+  "/ping",
+  "/login",
+  "/getIdentifiants"
 ]);
+
+app.use("/api", (req, res, next) => {
+  if (req.method === "OPTIONS") return next();           // préflight
+  if (publicPaths.has(req.path)) return next();           // routes publiques
+  return requireAuth(req, res, next);                     // reste protégé
+});
 
 function requireAuth(req, res, next) {
   const cookieToken = req.cookies?.auth_token;
