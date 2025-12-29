@@ -2,6 +2,9 @@
   "name": "pcelec-app",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=16.0.0 <23.0.0"
+  },
   "scripts": {
     "start": "node server.js"
   },
@@ -9,7 +12,7 @@
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "body-parser": "^1.20.2",
-    "better-sqlite3": "^8.7.0",
+    "better-sqlite3": "^9.6.0",
     "xlsx": "^0.18.5",
     "express-session": "^1.17.3"
   }
