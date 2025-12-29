@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 // --- CONFIG ---
 const PORT = process.env.PORT || 3000;
 const DB_FILE = process.env.DB_FILE || "./data.sqlite";
-const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_ME_IN_PRODUCTION_12345ABCDE"; // ⚠️ change en production
+const JWT_SECRET = process.env.JWT_SECRET || 24d06f19a839638d203ae0fbb3e7ce27; // ⚠️ change en production
 
 // --- CORS ---
 const allowedOrigins = [
