@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Admin - PCELEC (local)</title>
+  <title>Admin - PCELEC</title>
 
   <!-- jsPDF & autotable -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -28,7 +28,7 @@
     input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-size:15px;box-sizing:border-box;background:#fff;}
     button{color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600;}
     button.secondary{background:#475569;}
-    button.ghost{background:#fff;color:#0f172a;border:1px solid #var(--border);}
+    button.ghost{background:#fff;color:#0f172a;border:1px solid var(--border);}
     .btn-primary{background:#2563eb;}
     .btn-green{background:#16a34a;}
     .btn-orange{background:#f97316;}
@@ -59,7 +59,7 @@
     .pill-actions{display:inline-flex;gap:6px;margin-left:6px;font-size:12px;}
     .drop-target{border:2px dashed #cbd5e1;min-height:40px;padding:4px;border-radius:6px;}
     .drag-over{background:#e0f2fe;}
-    #historyPanel{position:fixed;left:0;right:0;bottom:60px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px 32px 24px 24px;box-shadow:0 36px 120px rgba(2,6,23,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:2000;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;scrollbar-width: var(--scrollbar-size);}
+    #historyPanel{position:fixed;left:0;right:0;bottom:60px;max-height:calc(100vh - 120px);background:#fff;border-radius:20px;padding:24px 32px 24px 24px;box-shadow:0 36px 120px rgba(0,0,0,0.2);overflow:auto;overscroll-behavior:none;display:none;z-index:2000;padding-bottom:calc(24px + env(safe-area-inset-bottom));font-size:14px;touch-action:pan-y;scrollbar-width: var(--scrollbar-size);}
     #historyPanel::-webkit-scrollbar{ width:var(--scrollbar-size); height:var(--scrollbar-size); }
     #historyPanel::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:10px; }
     #historyPanel::-webkit-scrollbar-track{ background:#f8fafc; }
@@ -257,10 +257,49 @@
   </div>
 
   <script>
-    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
+    // --- CONFIG ---
+    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+      ? "http://localhost:3000/api"
+      : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
+    // --- AUTH HELPERS ---
+    function getToken() {
+      try { return localStorage.getItem('jwt'); } catch(e) { return null; }
+    }
+    function setToken(tok) {
+      try { localStorage.setItem('jwt', tok); } catch(e) {}
+    }
+    function clearAuth() {
+      try { localStorage.removeItem('jwt'); localStorage.removeItem('userLogin'); } catch(e) {}
+    }
+    async function apiFetch(url, options={}) {
+      const token = getToken();
+      const headers = { "Content-Type": "application/json", ...(options.headers||{}) };
+      if (token) headers.Authorization = "Bearer " + token;
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401 || res.status === 403) {
+        clearAuth();
+        window.location.href = "index.html";
+        throw new Error("Unauthorized");
+      }
+      if (!res.ok) throw new Error(res.status + " " + res.statusText);
+      return res.json();
+    }
+    async function ensureAuth() {
+      const token = getToken();
+      if (!token) { clearAuth(); window.location.href = "index.html"; return null; }
+      try {
+        const v = await apiFetch(API_BASE + "/verify");
+        return v.user || null;
+      } catch(e) {
+        clearAuth();
+        window.location.href = "index.html";
+        return null;
+      }
+    }
+
+    // --- STATE ---
     let currentUser = '';
     let employes = [];
     let campAff = [];
@@ -275,47 +314,8 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    // ---------- Helpers fetch + token ----------
-    function getToken(){ try{return localStorage.getItem('authToken')||'';}catch(e){return '';} }
-    function setToken(token){ try{ localStorage.setItem('authToken', token||''); }catch(e){} }
-    function clearToken(){ try{ localStorage.removeItem('authToken'); }catch(e){} }
-
-    async function fetchJSON(url, options){
-      const token = getToken();
-      const merged = {
-        method: (options && options.method) || 'GET',
-        headers: {
-          ...(options && options.headers ? options.headers : {}),
-          ...(token ? { Authorization: 'Bearer ' + token } : {})
-        },
-        ...options
-      };
-      const res = await fetch(url, merged);
-      if(!res.ok){
-        if(res.status === 401 || res.status === 403){
-          redirectToLogin();
-          throw new Error('Non autorisé');
-        }
-        throw new Error(res.status+" "+res.statusText);
-      }
-      return res.json();
-    }
-    async function apiGet(path){ return fetchJSON(API_BASE+path); }
-    async function apiPost(path, body){
-      return fetchJSON(API_BASE+path,{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify(body||{})
-      });
-    }
-
-    function logout(){
-      clearToken();
-      try{ localStorage.removeItem('userLogin'); }catch(e){}
-      window.location.href = 'index.html';
-    }
-
-    // ---------- Utils ----------
+    // --- UTIL ---
+    function logout(){ clearAuth(); window.location.href = 'index.html'; }
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
     function fmtDateDisplay(isoStr){ if(!isoStr) return ''; const p=isoStr.split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr; }
@@ -328,34 +328,17 @@
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
     function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
-    function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
 
-    // ---------- Auth guard (admin only) ----------
-    function redirectToLogin(){ logout(); }
-    async function ensureAuthenticatedAdminPage(){
-      const token = getToken();
-      if(!token){ redirectToLogin(); return null; }
-      try{
-        const resp = await fetchJSON(API_BASE + "/verify");
-        const role = (resp.user && resp.user.role || 'user').toLowerCase();
-        if(role !== 'admin'){
-          redirectToLogin();
-          return null;
-        }
-        currentUser = resp.user.nom || '';
-        try{ localStorage.setItem('userLogin', currentUser); }catch(e){}
-        return currentUser;
-      }catch(e){
-        redirectToLogin();
-        return null;
-      }
-    }
+    // --- API WRAPPERS WITH AUTH ---
+    async function apiGet(path){ return apiFetch(API_BASE+path, { method:"GET" }); }
+    async function apiPost(path, body){ return apiFetch(API_BASE+path, { method:"POST", body: JSON.stringify(body||{}) }); }
 
-    // ---------- App init ----------
+    // --- APP INIT ---
     async function initApp(){
-      const login = await ensureAuthenticatedAdminPage();
-      if(!login) return;
-      document.getElementById('adminUser').textContent = login || '(?)';
+      const verified = await ensureAuth();
+      if (!verified) return;
+      currentUser = verified.nom || '';
+      document.getElementById('adminUser').textContent = currentUser || '(?)';
 
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
@@ -374,7 +357,7 @@
     }
     window.onload = initApp;
 
-    // ---------- Planning navigation ----------
+    // --- PLANNING RANGE ---
     function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
     function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
     function getRange(){
@@ -389,13 +372,28 @@
       renderPlanning(start,end);
     }
 
-    // ---------- Data loads ----------
+    // --- DATA LOADERS ---
     async function loadEmployees(){
       try{
         employes = await apiGet("/getEmployes");
         salariedNames = (employes||[]).filter(e => (e.role||'user').toLowerCase() === 'user').map(e => e.nom);
       }catch(e){ console.error(e); employes=[]; salariedNames=[]; }
     }
+    async function loadCampAff(){
+      try{
+        campAff = await apiGet("/getCampingsEtAffaires");
+      }catch(e){ console.error(e); campAff=[]; }
+    }
+    async function loadPlanningRange(start,end){
+      try{
+        planning = await apiPost("/getPlanning", { startIso: fmtDateLocal(start), endIso: fmtDateLocal(end) });
+      }catch(e){
+        console.error(e);
+        planning = [];
+      }
+    }
+
+    // --- MODALS EMPLOYES / CAMPINGS ---
     function openEmpModal(){ renderEmpList(); const m = document.getElementById('empModal'); if(m){ m.style.display='flex'; m.setAttribute('aria-hidden','false'); } }
     function closeEmpModal(){ const m = document.getElementById('empModal'); if(m){ m.style.display='none'; m.setAttribute('aria-hidden','true'); } }
     function addEmpRow(){ employes.push({nom:'', email:'', matricule:'', role:'user', password:''}); renderEmpList(); }
@@ -437,11 +435,6 @@
     }
     async function refreshEmployes(){ await loadEmployees(); renderEmpList(); }
 
-    async function loadCampAff(){
-      try{
-        campAff = await apiGet("/getCampingsEtAffaires");
-      }catch(e){ console.error(e); campAff=[]; }
-    }
     function openCampModal(){ renderCampList(); const m = document.getElementById('campModal'); if(m){ m.style.display='flex'; m.setAttribute('aria-hidden','false'); } }
     function closeCampModal(){ const m = document.getElementById('campModal'); if(m){ m.style.display='none'; m.setAttribute('aria-hidden','true'); } }
     function addCampRow(){ campAff.push({camping:'', affaire:''}); renderCampList(); }
@@ -506,15 +499,7 @@
       evt.target.value = '';
     }
 
-    // ---------- Planning ----------
-    async function loadPlanningRange(start,end){
-      try{
-        planning = await apiPost("/getPlanning", { startIso: fmtDateLocal(start), endIso: fmtDateLocal(end) });
-      }catch(e){
-        console.error(e);
-        planning = [];
-      }
-    }
+    // --- PLANNING CRUD ---
     function fillModalSalaries(){
       const sel = document.getElementById('mSalarie'); if(!sel) return;
       sel.innerHTML = '<option value="">--</option>';
@@ -655,7 +640,7 @@
       if (!autoSaveEnabled && autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
     }
 
-    // ---------- Historique ----------
+    // --- HISTORY ---
     function populateHistoryFiltersFromLocal(){
       const salSelect = document.getElementById('histSalarie');
       const campSelect = document.getElementById('histCamping');
@@ -919,7 +904,7 @@
       return sel;
     }
 
-    // ---------- Récap ----------
+    // --- RECAP ---
     function fillRecapSelectors(){
       const campSel = document.getElementById('recapCamp');
       if(campSel){
@@ -1136,6 +1121,7 @@
       });
     }
 
+    // --- HISTORY UI ACTIONS ---
     function afficherHistorique(){
       const meta=document.querySelector('meta[name="viewport"]'); if(meta) meta.setAttribute('content','width=device-width, initial-scale=1, user-scalable=yes');
       const panel=document.getElementById('historyPanel'); panel.style.display='block'; panel.setAttribute('aria-hidden','false');
@@ -1214,6 +1200,7 @@
       if(rf) rf.value=t; if(rt) rt.value=t;
     })();
 
+    // Expose globals for inline handlers
     window.exportPlanningPDFLocal = exportPlanningPDFLocal;
     window.openEmpModal = openEmpModal;
     window.openCampModal = openCampModal;
@@ -1246,6 +1233,7 @@
     window.telechargerPDF = telechargerPDF;
     window.logout = logout;
 
+    // --- PDF Planning ---
     async function exportPlanningPDFLocal() {
       const table = document.querySelector('#planningTableWrap table');
       if (!table) { alert("Planning introuvable."); return; }
