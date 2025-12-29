@@ -60,9 +60,9 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-      ? "http://localhost:3000/api"
-      : "https://pointage-oeax.onrender.com/api";
+   const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000/api"
+    : "https://pointage-oeax.onrender.com/api";
 
     let loadTimer=null, loadProgress=0;
 
@@ -76,7 +76,24 @@
       return res.json();
     }
 
-    function chargerIdentifiants(){
+    async function chargerIdentifiants(){
+      // Check if already logged in
+      const res = await fetch('/api/session', { credentials: 'include' });
+      const { user } = await res.json();
+      if (user) {
+        const resRole = await fetch('/api/getRoleForLogin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: user }),
+          credentials: 'include'
+        });
+        const role = await resRole.json();
+        if (role === 'admin') window.location.href = './admin.html';
+        else if (role === 'compta') window.location.href = './validation.html';
+        else window.location.href = './salarie.html';
+        return;
+      }
+      // Proceed with loading login options
       const sel = document.getElementById('login');
       sel.innerHTML = '<option>Chargement...</option>';
       fetchJSON(API_BASE + "/getIdentifiants")
@@ -124,40 +141,37 @@
       startLoading('Validation des accès...');
       if(btn) btn.disabled=true;
 
-      fetchJSON(API_BASE + "/checkLogin", {
+      fetch(API_BASE + "/checkLogin", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ login, password: pass })
+        body: JSON.stringify({ login, password: pass }),
+        credentials: 'include'
       })
-      .then(resp=>{
-        if(resp && resp.ok && resp.token){
-          // Sauve token + login
-          try { localStorage.setItem('authToken', resp.token); localStorage.setItem('userLogin', login); } catch(e){}
-          stopLoading(true);
-          // Décoder le rôle côté client si besoin
-          const payload = parseJwt(resp.token);
-          const role = (payload && payload.role || 'user').toLowerCase();
-          if(role==='admin') window.location.href = "./admin.html";
-          else if(role==='compta') window.location.href = "./validation.html";
-          else window.location.href = "./salarie.html";
+      .then(ok=>{
+        if(ok){
+          return fetch(API_BASE + "/getRoleForLogin", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ login }),
+            credentials: 'include'
+          }).then(res => res.json());
         } else {
           stopLoading(false);
           if(loginMsg){ loginMsg.textContent='Mot de passe incorrect'; loginMsg.style.display='block'; }
           if(btn) btn.disabled=false;
         }
       })
+      .then(role=>{
+        stopLoading(true);
+        if(role==='admin') window.location.href = './admin.html';
+        else if(role==='compta') window.location.href = './validation.html';
+        else window.location.href = './salarie.html';
+      })
       .catch(()=>{
         stopLoading(false);
         if(loginMsg){ loginMsg.textContent='Erreur vérification'; loginMsg.style.display='block'; }
         if(btn) btn.disabled=false;
       });
-    }
-
-    function parseJwt(token){
-      try{
-        const payload = token.split('.')[1];
-        return JSON.parse(atob(payload));
-      }catch(e){ return null; }
     }
   </script>
 </body>
