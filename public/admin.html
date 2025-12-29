@@ -384,6 +384,11 @@
       if(status){ status.textContent='Enregistrement...'; }
       try{
         await apiPost("/saveEmployes", employes);
+        // Mise à jour immédiate du planning avec les nouveaux salariés (rôle user)
+        salariedNames = (employes||[]).filter(e => (e.role||'user').toLowerCase() === 'user').map(e => e.nom);
+        populateHistoryFiltersFromLocal();
+        const {start,end} = getRange();
+        renderPlanning(start,end);
         if(status){ status.textContent='OK'; }
         toast("Employés enregistrés");
       }catch(e){
