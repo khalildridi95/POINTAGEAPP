@@ -258,9 +258,7 @@
 
   <script>
     const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const API_BASE = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-      ? "http://localhost:3000/api"
-      : "https://pointage-oeax.onrender.com/api";
+    const API_BASE = IS_LOCAL ? "http://localhost:3000/api" : "https://pointage-oeax.onrender.com/api";
     const FIXED_COLUMN_WIDTH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--planning-col-width')) || 120;
 
     let currentUser = '';
@@ -277,8 +275,47 @@
     let autoSaveEnabled = true;
     let recapGroupedData = [];
 
-    function logout(){ try{ localStorage.removeItem('userLogin'); }catch(e){} window.location.href = 'index.html'; }
+    // ---------- Helpers fetch + token ----------
+    function getToken(){ try{return localStorage.getItem('authToken')||'';}catch(e){return '';} }
+    function setToken(token){ try{ localStorage.setItem('authToken', token||''); }catch(e){} }
+    function clearToken(){ try{ localStorage.removeItem('authToken'); }catch(e){} }
 
+    async function fetchJSON(url, options){
+      const token = getToken();
+      const merged = {
+        method: (options && options.method) || 'GET',
+        headers: {
+          ...(options && options.headers ? options.headers : {}),
+          ...(token ? { Authorization: 'Bearer ' + token } : {})
+        },
+        ...options
+      };
+      const res = await fetch(url, merged);
+      if(!res.ok){
+        if(res.status === 401 || res.status === 403){
+          redirectToLogin();
+          throw new Error('Non autorisé');
+        }
+        throw new Error(res.status+" "+res.statusText);
+      }
+      return res.json();
+    }
+    async function apiGet(path){ return fetchJSON(API_BASE+path); }
+    async function apiPost(path, body){
+      return fetchJSON(API_BASE+path,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(body||{})
+      });
+    }
+
+    function logout(){
+      clearToken();
+      try{ localStorage.removeItem('userLogin'); }catch(e){}
+      window.location.href = 'index.html';
+    }
+
+    // ---------- Utils ----------
     function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
     function fmtDateLocal(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
     function fmtDateDisplay(isoStr){ if(!isoStr) return ''; const p=isoStr.split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr; }
@@ -290,60 +327,36 @@
     function minutesToHHMM(total){ const sign = total < 0 ? '-' : ''; const t = Math.abs(total); const h = Math.floor(t/60); const m = t%60; return sign + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
     function arrayBufferToBase64(buffer){ let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength; for(let i=0;i<len;i++){ binary += String.fromCharCode(bytes[i]); } return btoa(binary); }
 
-    async function fetchJSON(url, options){ const res = await fetch(url, options || {}); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json(); }
-    async function apiGet(path){ return fetchJSON(API_BASE+path); }
-    async function apiPost(path, body){ return fetchJSON(API_BASE+path, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body||{}) }); }
-
     function toast(msg, ok=true){ const el=document.getElementById('toast'); if(!el) return; el.textContent=msg; el.style.background = ok ? "#16a34a" : "#d32f2f"; el.style.display='inline-flex'; setTimeout(()=> el.style.display='none', 2400); }
     function setLoading(on){ const l=document.getElementById('loading'); if(l) l.style.display = on ? 'block' : 'none'; }
 
-    function openArchiveModal(){}
-    function closeArchiveModal(){}
-    function onClickExportArchive(btn){}
-    function onClickCleanApp(btn){}
-
-    // --- Sécurité frontend : guard accès admin ---
-    const ALLOWED_ROLES = ['admin','administrateur'];
-    function redirectToLogin() {
-      try { localStorage.removeItem('userLogin'); } catch(e){}
-      window.location.href = 'index.html';
-    }
-    async function fetchRole(login) {
-      if (!login) return null;
-      try {
-        const r = await apiPost('/getRoleForLogin', { login });
-        return r;
-      } catch(e) {
-        return null;
-      }
-    }
-    async function ensureAuthenticatedAdminPage() {
-      let login = '';
-      const params = new URLSearchParams(window.location.search);
-      login = params.get('u') || '';
-      if (!login) {
-        try { login = localStorage.getItem('userLogin') || ''; } catch(e){}
-      }
-      if (!login) { redirectToLogin(); return null; }
-
-      const role = await fetchRole(login);
-      if (!role || !ALLOWED_ROLES.includes(String(role).toLowerCase())) {
+    // ---------- Auth guard (admin only) ----------
+    function redirectToLogin(){ logout(); }
+    async function ensureAuthenticatedAdminPage(){
+      const token = getToken();
+      if(!token){ redirectToLogin(); return null; }
+      try{
+        const resp = await fetchJSON(API_BASE + "/verify");
+        const role = (resp.user && resp.user.role || 'user').toLowerCase();
+        if(role !== 'admin'){
+          redirectToLogin();
+          return null;
+        }
+        currentUser = resp.user.nom || '';
+        try{ localStorage.setItem('userLogin', currentUser); }catch(e){}
+        return currentUser;
+      }catch(e){
         redirectToLogin();
         return null;
       }
-      try { localStorage.setItem('userLogin', login); } catch(e){}
-      return login;
     }
-    // -------------------------------------------------
 
+    // ---------- App init ----------
     async function initApp(){
       const login = await ensureAuthenticatedAdminPage();
-      if (!login) return; // redirection effectuée
-      currentUser = login;
-      const params = new URLSearchParams(window.location.search);
-      const qpUser = params.get('u') || '';
-      if (qpUser) currentUser = qpUser;
-      document.getElementById('adminUser').textContent = currentUser || '(?)';
+      if(!login) return;
+      document.getElementById('adminUser').textContent = login || '(?)';
+
       try { const savedToggle = localStorage.getItem('autoSavePlanning'); if (savedToggle !== null) autoSaveEnabled = savedToggle === 'true'; } catch(e){}
       const toggle = document.getElementById('autoSaveToggle'); if (toggle) toggle.checked = autoSaveEnabled;
 
@@ -361,6 +374,7 @@
     }
     window.onload = initApp;
 
+    // ---------- Planning navigation ----------
     function changeViewMode(val){ viewMode=val; if(viewMode==='month') anchorDate=addMonths(anchorDate,0); else anchorDate=startOfWeek(anchorDate); loadRangePlanning(); }
     function shiftRange(delta){ if (viewMode==='week') anchorDate=addDays(anchorDate,delta*7); else if(viewMode==='two') anchorDate=addDays(anchorDate,delta*14); else anchorDate=addMonths(anchorDate,delta); loadRangePlanning(); }
     function getRange(){
@@ -375,6 +389,7 @@
       renderPlanning(start,end);
     }
 
+    // ---------- Data loads ----------
     async function loadEmployees(){
       try{
         employes = await apiGet("/getEmployes");
@@ -491,6 +506,7 @@
       evt.target.value = '';
     }
 
+    // ---------- Planning ----------
     async function loadPlanningRange(start,end){
       try{
         planning = await apiPost("/getPlanning", { startIso: fmtDateLocal(start), endIso: fmtDateLocal(end) });
@@ -610,7 +626,7 @@
       planning.splice(idx,1);
       const {start,end} = getRange(); renderPlanning(start,end); if(autoSaveEnabled) triggerAutoSave('delete');
     }
-    function triggerAutoSave(reason){
+    function triggerAutoSave(){
       if(!autoSaveEnabled) return;
       const ps = document.getElementById('planStatus');
       if(ps) ps.textContent = 'Auto: sauvegarde...';
@@ -639,6 +655,7 @@
       if (!autoSaveEnabled && autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
     }
 
+    // ---------- Historique ----------
     function populateHistoryFiltersFromLocal(){
       const salSelect = document.getElementById('histSalarie');
       const campSelect = document.getElementById('histCamping');
@@ -902,6 +919,7 @@
       return sel;
     }
 
+    // ---------- Récap ----------
     function fillRecapSelectors(){
       const campSel = document.getElementById('recapCamp');
       if(campSel){
